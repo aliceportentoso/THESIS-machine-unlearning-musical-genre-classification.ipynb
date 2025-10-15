@@ -1,0 +1,27 @@
+import os
+import requests
+from zipfile import ZipFile
+
+def download_fma_metadata():
+    url = "https://os.unil.cloud.switch.ch/fma/fma_metadata.zip"
+    os.makedirs("data", exist_ok=True)
+    zip_path = "data/fma_metadata.zip"
+
+    if not os.path.exists(zip_path):
+        print("⬇️  Scarico fma_metadata.zip...")
+        r = requests.get(url, stream=True)
+        with open(zip_path, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+        print("✅ Download completato!")
+
+        print("📦 Estrazione dei file...")
+        with ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall("data/fma_metadata")
+        print("✅ Estrazione completata!")
+    else:
+        print("ℹ️  Metadati già presenti, nessuna azione necessaria.")
+
+if __name__ == "__main__":
+    download_fma_metadata()
