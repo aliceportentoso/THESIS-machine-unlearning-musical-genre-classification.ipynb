@@ -12,6 +12,7 @@ from eval import evaluate
 from config import *
 
 print("starting..")
+
 print_config()
 
 # LOAD DATA AND FILTER
@@ -78,7 +79,6 @@ optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 # --- TRAINING ---
 start_time = time.time()
 train(model, train_loader, val_loader, criterion, optimizer, DEVICE)
-
 # --- Evaluation ---
 #accuracy = evaluate(model, test_loader, label_encoder=LabelEncoder().fit(track_genres.values))
 accuracy = evaluate(model, test_loader, label_encoder=None)
