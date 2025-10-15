@@ -79,9 +79,10 @@ optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 # --- TRAINING ---
 start_time = time.time()
 train(model, train_loader, val_loader, criterion, optimizer, DEVICE)
+
 # --- Evaluation ---
-#accuracy = evaluate(model, test_loader, label_encoder=LabelEncoder().fit(track_genres.values))
-accuracy = evaluate(model, test_loader, label_encoder=None)
+accuracy = evaluate(model, test_loader, label_encoder=LabelEncoder().fit(track_genres.values))
+#accuracy = evaluate(model, test_loader, label_encoder=None)
 joblib.dump(accuracy, "joblib/accuracy_train.joblib")
 
 # --- Save ---
@@ -92,4 +93,4 @@ print(f"Tempo Learning: {time.time()-start_time:.2f} s")
 print_config()
 
 from unlearning import unlearning_main
-unlearning_main(LabelEncoder().fit(track_genres.values))
+unlearning_main()

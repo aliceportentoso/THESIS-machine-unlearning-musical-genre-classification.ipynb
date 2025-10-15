@@ -5,11 +5,24 @@ from config import DEVICE
 
 
 def evaluate(model, data_loader, label_encoder=None):
-    acc = compute_accuracy(model, data_loader)
-    print(f"Accuracy: {acc:.4f}")
 
     all_preds = []
     all_labels = []
+
+    with torch.no_grad():
+        for inputs, labels in data_loader:
+            inputs = inputs.to(DEVICE)
+            labels = labels.to(DEVICE)
+            outputs = model(inputs)
+            outputs = outputs['clipwise_output']
+            _, preds = torch.max(outputs, 1)
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+
+    acc = compute_accuracy(model, data_loader)
+    print(f"Accuracy: {acc:.4f}")
+
+
     if label_encoder is not None:
         cm = confusion_matrix(all_labels, all_preds)
         fig, ax = plt.subplots(figsize=(10, 10))
@@ -17,6 +30,7 @@ def evaluate(model, data_loader, label_encoder=None):
         disp.plot(ax=ax, cmap=plt.cm.Blues)
         plt.xticks(rotation=90)
         plt.show()
+        plt.savefig("confusion_matrix.png", bbox_inches='tight')  # bbox_inches='tight' evita tagli sulle etichette
 
     return acc
 

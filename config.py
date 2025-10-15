@@ -14,10 +14,10 @@ DURATION = 30
 BATCH_SIZE = 32 #meno per small
 LR = 0.0001
 
-MAX_EPOCHS = 60
+MAX_EPOCHS = 100
 UNL_EPOCHS = 20
 
-AUDIO_DIR, CSV_FILE = 'fma_large', 'fma_metadata/tracks.csv'
+AUDIO_DIR, CSV_FILE = 'fma_small', 'fma_metadata/tracks.csv'
 SUBSET = 'small'
 NUM_WORKERS = 4 # 4 per small, o 8
 DEVICE = torch.device("cuda")

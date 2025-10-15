@@ -6,12 +6,17 @@ from eval import evaluate
 from dataset import FMADataset
 from model import Cnn6
 from config import *
+import time
 
-def unlearning_main(label_encoder):
+def unlearning_main():
+    start_time = time.time()
     # --- CARICA MODELLO E LABEL ENCODER ---
     model = Cnn6().to(DEVICE)
-    model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE)) # carica i pesi salvati dall'addestramento
+    #model.load_state_dict(torch.load("saved_models/fma_cnn_small_lr_0.0001.pth", map_location=DEVICE))  # carica i pesi salvati dall'addestramento
+
     model.eval()
+
     le = joblib.load(ENCODER_PATH)
 
     # carica gli split
@@ -25,12 +30,12 @@ def unlearning_main(label_encoder):
 
 #    forget_ids = [148]  # esempi di track_ids da dimenticare
 #    forget_labels = [1]  # etichette corrispondenti
-
+    print("CLASSES:  ")
+    print(le.classes_)
     # questo per fare dimenticare genere
-    genre_names = ["Electronic", "Experimental", "Folk", "Hip-Hop",
-                   "Instrumental", "International", "Pop", "Rock"]
-    GENRE_TO_FORGET = "Hip-Hop"  # <-- cambia qui il genere
-    genre_index = genre_names.index(GENRE_TO_FORGET)
+    genre_to_remove = "Electronic"
+    idx_to_remove = le.transform([genre_to_remove])[0]
+    print(f"Rimuovere il genere {genre_to_remove} con indice {idx_to_remove}")
 
     # prendi 100 indici casuali (senza ripetizioni)
     #random_indices = np.random.choice(len(train_ids), size=NUM_FORGET, replace=False)
@@ -42,10 +47,10 @@ def unlearning_main(label_encoder):
     #retain_labels = [y for (x, y) in zip(train_ids, train_labels) if x not in forget_labels]
 
     # QUESTO PER I GENERI
-    forget_ids = [tid for tid, label in zip(train_ids, train_labels) if label == genre_index]
-    forget_labels = [label for label in train_labels if label == genre_index]
-    retain_ids = [tid for tid, label in zip(train_ids, train_labels) if label != genre_index]
-    retain_labels = [label for label in train_labels if label != genre_index]
+    forget_ids = [tid for tid, label in zip(train_ids, train_labels) if label == idx_to_remove]
+    forget_labels = [label for label in train_labels if label == idx_to_remove]
+    retain_ids = [tid for tid, label in zip(train_ids, train_labels) if label != idx_to_remove]
+    retain_labels = [label for label in train_labels if label != idx_to_remove]
 
     retain_dataset = FMADataset(retain_ids, retain_labels)
     forget_dataset = FMADataset(forget_ids, forget_labels)
@@ -59,18 +64,20 @@ def unlearning_main(label_encoder):
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
-    # --- applice algoritmo di UNLEARNING ---
+    # --- applica algoritmo di UNLEARNING ---
     #unl_fine_tuning(model, forget_loader, criterion, optimizer)
     unl_gradient_ascent(model, forget_loader, retain_loader, criterion, optimizer)
 
-    # --- evaluate ---
-    metrics = evaluate_unlearning(model, forget_loader, retain_loader, val_loader, accuracy_train)
-    print(f"num forget {NUM_FORGET}")
-
     # --- SALVA MODELLO AGGIORNATO ---
     torch.save(model.state_dict(), UNL_MODEL_PATH)
-    evaluate(model, forget_loader, label_encoder)
     print(f"Modello aggiornato salvato in {UNL_MODEL_PATH}")
+
+    # --- evaluate ---
+    evaluate_unlearning(model, forget_loader, retain_loader, val_loader, accuracy_train)
+    evaluate(model, forget_loader, le)
+    print(f"num forget {NUM_FORGET}")
+    print(f"Tempo Unlearning: {time.time() - start_time:.2f} s")
+
 
 def unl_fine_tuning(model, forget_loader, criterion, optimizer):
     """
@@ -135,7 +142,6 @@ def unl_gradient_ascent(model, forget_loader, retain_loader, criterion, optimize
             optimizer.step()
 
         print(f"[Epoch {epoch+1}/{UNL_EPOCHS}] Forget Loss: {f_loss.item():.4f} | Retain Loss: {r_loss.item():.4f}")
-
     print(f"Complete {UNL_EPOCHS} of UNLEARNING con GRADIENT ASCENT")
 
-#unlearning_main()
+unlearning_main()
