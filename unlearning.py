@@ -33,7 +33,7 @@ def unlearning_main():
     print("CLASSES:  ")
     print(le.classes_)
     # questo per fare dimenticare genere
-    genre_to_remove = "Electronic"
+    genre_to_remove = "Hip-Hop"
     idx_to_remove = le.transform([genre_to_remove])[0]
     print(f"Rimuovere il genere {genre_to_remove} con indice {idx_to_remove}")
 
@@ -74,7 +74,7 @@ def unlearning_main():
 
     # --- evaluate ---
     evaluate_unlearning(model, forget_loader, retain_loader, val_loader, accuracy_train)
-    evaluate(model, forget_loader, le)
+    evaluate(model, val_loader, le)
     print(f"num forget {NUM_FORGET}")
     print(f"Tempo Unlearning: {time.time() - start_time:.2f} s")
 
@@ -96,7 +96,7 @@ def unl_fine_tuning(model, forget_loader, criterion, optimizer):
 
     print(f"Complete {UNL_EPOCHS} of UNLEARNING con FINE TUNING")
 
-def unl_gradient_ascent(model, forget_loader, retain_loader, criterion, optimizer, alpha=0.5, beta=0.5):
+def unl_gradient_ascent(model, forget_loader, retain_loader, criterion, optimizer, alpha=0.1, beta=0.9):
     """
     Algoritmo di unlearning più complesso:
     - Usa gradient ascent sui dati da dimenticare.

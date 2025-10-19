@@ -63,7 +63,7 @@ def train(model, train_loader, val_loader, criterion, optimizer, device):
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             patience_counter = 0
-            best_weights = model.state_dict().copy()
+            best_weights = model.state_dict()
         else:
             patience_counter += 1
             print(f"Patience_counter: {patience_counter}")

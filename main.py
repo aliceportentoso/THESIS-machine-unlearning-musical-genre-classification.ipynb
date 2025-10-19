@@ -18,8 +18,19 @@ print_config()
 # LOAD DATA AND FILTER
 tracks = pd.read_csv(CSV_FILE,  index_col=0, header=[0,1])
 
+hiphop_indices = tracks[('track', 'genre_top')] == 'Hip-Hop'
+hiphop_ids = tracks[hiphop_indices].index.drop([154308,155066])
+
 small_tracks = tracks[tracks[('set', 'subset')] == SUBSET]
 track_genres = small_tracks[('track', 'genre_top')].dropna()
+track_genres = track_genres.drop(hiphop_ids, errors='ignore')
+
+print("dimenticare genere Hip-Hop. learning senza il genere")
+
+#artisti id 9765, artist name Derek Clegg, 45 occorrenze in small
+#artist_to_drop = [9765]
+#track_ids_to_drop = tracks[tracks[('artist','id')].isin(artist_to_drop)].index
+
 
 track_genres = track_genres.drop([1486,2624,3284,5574,8669,10116,11583,12838,13529,14116,14180,20814,22554,23429,23430,
                                   23431,25173,25174,25175,25176,25180,29345,29346,29352,29356,33411,33413,33414,33417,
@@ -93,4 +104,4 @@ print(f"Tempo Learning: {time.time()-start_time:.2f} s")
 print_config()
 
 from unlearning import unlearning_main
-unlearning_main()
+#unlearning_main()
