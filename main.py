@@ -1,3 +1,4 @@
+from collections import Counter
 from torch.utils.data import DataLoader
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
@@ -11,8 +12,6 @@ from train import train
 from eval import evaluate
 from config import *
 
-print("starting..")
-
 print_config()
 
 # LOAD DATA AND FILTER
@@ -20,6 +19,23 @@ tracks = pd.read_csv(CSV_FILE,  index_col=0, header=[0,1])
 
 small_tracks = tracks[tracks[('set', 'subset')] == SUBSET]
 track_genres = small_tracks[('track', 'genre_top')].dropna()
+
+if TYPE_FORGET is not None:
+
+    # RIMUOVI IL GENERE
+    if TYPE_FORGET == "GENRE":
+        genre_forget = 'Hip-Hop'
+        print(f"Learning senza il genere {genre_forget}..")
+        genre_ids = tracks[tracks[('track', 'genre_top')] == genre_forget].index.drop([154308,155066]) #questo serve a non far eliminare completamente il genere
+        track_genres = track_genres.drop(genre_ids, errors='ignore')
+        print(track_genres)
+
+    if TYPE_FORGET == "ARTIST":
+    #artisti id 9765, artist name Derek Clegg, 45 occorrenze in small
+        artist_to_drop = [9765]
+        print(f"Learning senza l'artista ID 9765..")
+        track_ids_to_drop = tracks[tracks[('artist','id')].isin(artist_to_drop)].index
+        track_genres = track_genres.drop(track_ids_to_drop, errors='ignore')
 
 track_genres = track_genres.drop([1486,2624,3284,5574,8669,10116,11583,12838,13529,14116,14180,20814,22554,23429,23430,
                                   23431,25173,25174,25175,25176,25180,29345,29346,29352,29356,33411,33413,33414,33417,
@@ -36,7 +52,8 @@ track_genres = track_genres.drop([1486,2624,3284,5574,8669,10116,11583,12838,135
                                   148793,148794,148795,151920,155051, 134956], errors='ignore') # dataset errors
 
 track_ids = track_genres.index.values
-labels = LabelEncoder().fit_transform(track_genres.values)
+le = LabelEncoder()
+labels = le.fit_transform(track_genres.values)
 
 train_ids, test_ids, train_labels, test_labels = train_test_split(
     track_ids, labels, test_size=0.2, random_state=42, stratify=labels
@@ -79,17 +96,13 @@ optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 # --- TRAINING ---
 start_time = time.time()
 train(model, train_loader, val_loader, criterion, optimizer, DEVICE)
+
 # --- Evaluation ---
-#accuracy = evaluate(model, test_loader, label_encoder=LabelEncoder().fit(track_genres.values))
-accuracy = evaluate(model, test_loader, label_encoder=None)
+accuracy = evaluate(model, test_loader, label_encoder=LabelEncoder().fit(track_genres.values))
+#accuracy = evaluate(model, test_loader, label_encoder=None)
 joblib.dump(accuracy, "joblib/accuracy_train.joblib")
 
 # --- Save ---
 torch.save(model.state_dict(), MODEL_PATH)
 joblib.dump(LabelEncoder().fit(track_genres.values), ENCODER_PATH)
-print(f"Tempo Learning: {time.time()-start_time:.2f} s")
-
-print_config()
-
-from unlearning import unlearning_main
-unlearning_main(LabelEncoder().fit(track_genres.values))
+print(f"Tempo Learning: {(time.time()-start_time)/3600:.2f} ore")

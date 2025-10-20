@@ -4,39 +4,33 @@ import matplotlib.pyplot as plt
 from config import DEVICE
 
 
-def evaluate(model, data_loader, label_encoder=None):
-    acc = compute_accuracy(model, data_loader)
-    print(f"Accuracy: {acc:.4f}")
+def evaluate(model, data_loader, label_encoder):
 
     all_preds = []
     all_labels = []
-    if label_encoder is not None:
-        cm = confusion_matrix(all_labels, all_preds)
-        fig, ax = plt.subplots(figsize=(10, 10))
-        disp = ConfusionMatrixDisplay(cm, display_labels=label_encoder.classes_)
-        disp.plot(ax=ax, cmap=plt.cm.Blues)
-        plt.xticks(rotation=90)
-        plt.show()
 
-    return acc
-
-def compute_accuracy(model, loader):
-    """
-    Calcola l'accuracy sui dati da dimenticare.
-    Più bassa = modello ha dimenticato meglio.
-    """
-    model.eval()
-    correct, total = 0, 0
     with torch.no_grad():
-        for inputs, labels in loader:
+        for inputs, labels in data_loader:
             inputs = inputs.to(DEVICE)
             labels = labels.to(DEVICE)
             outputs = model(inputs)
             outputs = outputs['clipwise_output']
-            _, predicted = torch.max(outputs, 1)
-            correct += (predicted == labels).sum().item()
-            total += labels.size(0)
-    acc = correct / total
+            _, preds = torch.max(outputs, 1)
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+
+    acc = compute_accuracy(model, data_loader)
+    print(f"Accuracy: {acc:.4f}")
+
+
+    cm = confusion_matrix(all_labels, all_preds)
+    fig, ax = plt.subplots(figsize=(10, 10))
+    disp = ConfusionMatrixDisplay(cm, display_labels=label_encoder.classes_)
+    disp.plot(ax=ax, cmap=plt.cm.Blues)
+    plt.xticks(rotation=90)
+    plt.show()
+    plt.savefig(f"confusion_matrix.png", bbox_inches='tight')  # bbox_inches='tight' evita tagli sulle etichette
+
     return acc
 
 def evaluate_unlearning(model, forget_loader, retain_loader, val_loader, acc_before):
@@ -57,3 +51,25 @@ def evaluate_unlearning(model, forget_loader, retain_loader, val_loader, acc_bef
 
     utility_drop = acc_before - global_acc #obiettivo poco tipo 2/3 %
     print(f"Utility drop: {utility_drop:.4f}")
+
+
+
+
+def compute_accuracy(model, loader):
+    """
+    Calcola l'accuracy sui dati da dimenticare.
+    Più bassa = modello ha dimenticato meglio.
+    """
+    model.eval()
+    correct, total = 0, 0
+    with torch.no_grad():
+        for inputs, labels in loader:
+            inputs = inputs.to(DEVICE)
+            labels = labels.to(DEVICE)
+            outputs = model(inputs)
+            outputs = outputs['clipwise_output']
+            _, predicted = torch.max(outputs, 1)
+            correct += (predicted == labels).sum().item()
+            total += labels.size(0)
+    acc = correct / total
+    return acc

@@ -58,6 +58,7 @@ def train(model, train_loader, val_loader, criterion, optimizer, device):
               f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} | "
               f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
 
+        best_weights = 0
         # ---- EARLY STOPPING ----
         if val_loss < best_val_loss:
             best_val_loss = val_loss
@@ -72,7 +73,7 @@ def train(model, train_loader, val_loader, criterion, optimizer, device):
                 break
 
         # ---- PLOT IN TEMPO REALE ----
-        if epoch % 2 == 0:
+        if epoch % 5 == 0:
             plt.figure(figsize=(12, 5))
 
             # Loss
@@ -90,5 +91,6 @@ def train(model, train_loader, val_loader, criterion, optimizer, device):
             plt.title("Accuracy")
 
             plt.show()
+
 
     return model, (train_losses, val_losses, train_accs, val_accs)
