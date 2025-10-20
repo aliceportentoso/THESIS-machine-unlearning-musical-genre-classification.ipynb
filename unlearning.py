@@ -28,29 +28,11 @@ def unlearning_main():
     test_labels = joblib.load("joblib/test_labels.joblib")
     accuracy_train = joblib.load("joblib/accuracy_train.joblib")
 
-#    forget_ids = [148]  # esempi di track_ids da dimenticare
-#    forget_labels = [1]  # etichette corrispondenti
-    print("CLASSES:  ")
-    print(le.classes_)
-    # questo per fare dimenticare genere
-    genre_to_remove = "Hip-Hop"
-    idx_to_remove = le.transform([genre_to_remove])[0]
-    print(f"Rimuovere il genere {genre_to_remove} con indice {idx_to_remove}")
+    # FORGET GENRE
+    forget_ids, forget_labels, retain_ids, retain_labels = forget_genre(train_ids, train_labels, le, genre_to_remove="Hip-Hop")
 
-    # prendi 100 indici casuali (senza ripetizioni)
-    #random_indices = np.random.choice(len(train_ids), size=NUM_FORGET, replace=False)
-
-    # ottieni gli ID e le labels corrispondenti
-    #forget_ids = [train_ids[i] for i in random_indices]
-    #forget_labels = [train_labels[i] for i in random_indices]
-    #retain_ids = [x for x in train_ids if x not in forget_ids]
-    #retain_labels = [y for (x, y) in zip(train_ids, train_labels) if x not in forget_labels]
-
-    # QUESTO PER I GENERI
-    forget_ids = [tid for tid, label in zip(train_ids, train_labels) if label == idx_to_remove]
-    forget_labels = [label for label in train_labels if label == idx_to_remove]
-    retain_ids = [tid for tid, label in zip(train_ids, train_labels) if label != idx_to_remove]
-    retain_labels = [label for label in train_labels if label != idx_to_remove]
+    #FORGET ARTIST
+#    forget_ids, forget_labels, retain_ids, retain_labels = forget_artist(train_ids, train_labels)
 
     retain_dataset = FMADataset(retain_ids, retain_labels)
     forget_dataset = FMADataset(forget_ids, forget_labels)
@@ -75,7 +57,6 @@ def unlearning_main():
     # --- evaluate ---
     evaluate_unlearning(model, forget_loader, retain_loader, val_loader, accuracy_train)
     evaluate(model, val_loader, le)
-    print(f"num forget {NUM_FORGET}")
     print(f"Tempo Unlearning: {time.time() - start_time:.2f} s")
 
 
@@ -143,5 +124,27 @@ def unl_gradient_ascent(model, forget_loader, retain_loader, criterion, optimize
 
         print(f"[Epoch {epoch+1}/{UNL_EPOCHS}] Forget Loss: {f_loss.item():.4f} | Retain Loss: {r_loss.item():.4f}")
     print(f"Complete {UNL_EPOCHS} of UNLEARNING con GRADIENT ASCENT")
+
+def forget_genre(train_ids, train_labels, le, genre_to_remove="Hip-Hop"):
+
+    idx_to_remove = le.transform([genre_to_remove])[0]
+    print(f"Rimuovere il genere '{genre_to_remove}' (indice {idx_to_remove})")
+
+    # Filtra i dati
+    forget_ids, forget_labels, retain_ids, retain_labels = [], [], [], []
+
+    for tid, label in zip(train_ids, train_labels):
+        if label == idx_to_remove:
+            forget_ids.append(tid)
+            forget_labels.append(label)
+        else:
+            retain_ids.append(tid)
+            retain_labels.append(label)
+
+    return forget_ids, forget_labels, retain_ids, retain_labels
+
+def forget_artist():
+    a = 1
+
 
 unlearning_main()
