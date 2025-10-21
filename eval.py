@@ -3,7 +3,6 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 from config import DEVICE
 
-
 def evaluate(model, data_loader, label_encoder):
 
     all_preds = []
@@ -51,9 +50,6 @@ def evaluate_unlearning(model, forget_loader, retain_loader, val_loader, acc_bef
 
     utility_drop = acc_before - global_acc #obiettivo poco tipo 2/3 %
     print(f"Utility drop: {utility_drop:.4f}")
-
-
-
 
 def compute_accuracy(model, loader):
     """

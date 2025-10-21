@@ -4,7 +4,7 @@ import torch
 
 TYPE_FORGET = "GENRE" #GENRE, ARTIST, None
 MAX_EPOCHS = 200
-UNL_EPOCHS = 1
+UNL_EPOCHS = 2
 
 MODEL_PATH = f'saved_models/epochs_{MAX_EPOCHS}.pth'
 UNL_MODEL_PATH = f'saved_models/unlearning_epochs_{UNL_EPOCHS}.pth'

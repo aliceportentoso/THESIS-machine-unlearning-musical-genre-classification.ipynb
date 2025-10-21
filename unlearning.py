@@ -19,14 +19,24 @@ def unlearning_main():
 
     le = joblib.load(ENCODER_PATH)
 
+    mode = "last"
     # carica gli split
-    train_ids = joblib.load("joblib/train_ids.joblib")
-    train_labels = joblib.load("joblib/train_labels.joblib")
-    val_ids = joblib.load("joblib/val_ids.joblib")
-    val_labels = joblib.load("joblib/val_labels.joblib")
-    test_ids = joblib.load("joblib/test_ids.joblib")
-    test_labels = joblib.load("joblib/test_labels.joblib")
-    accuracy_train = joblib.load("joblib/accuracy_train.joblib")
+    if mode == "base":
+        train_ids = joblib.load("joblib/train_ids_tot.joblib")
+        train_labels = joblib.load("joblib/train_labels_tot.joblib")
+        val_ids = joblib.load("joblib/val_ids_tot.joblib")
+        val_labels = joblib.load("joblib/val_labels_tot.joblib")
+        test_ids = joblib.load("joblib/test_ids_tot.joblib")
+        test_labels = joblib.load("joblib/test_labels_tot.joblib")
+        accuracy_train = joblib.load("joblib/accuracy_train_tot.joblib")
+    elif mode == "last":
+        train_ids = joblib.load("joblib/train_ids.joblib")
+        train_labels = joblib.load("joblib/train_labels.joblib")
+        val_ids = joblib.load("joblib/val_ids.joblib")
+        val_labels = joblib.load("joblib/val_labels.joblib")
+        test_ids = joblib.load("joblib/test_ids.joblib")
+        test_labels = joblib.load("joblib/test_labels.joblib")
+        accuracy_train = joblib.load("joblib/accuracy_train.joblib")
 
     # FORGET GENRE
     forget_ids, forget_labels, retain_ids, retain_labels = forget_genre(train_ids, train_labels, le, genre_to_remove="Hip-Hop")
@@ -144,7 +154,10 @@ def forget_genre(train_ids, train_labels, le, genre_to_remove="Hip-Hop"):
     return forget_ids, forget_labels, retain_ids, retain_labels
 
 def forget_artist():
-    a = 1
+    #artisti id 9765, artist name Derek Clegg, 45 occorrenze in small
+        artist_to_drop = [9765]
+        print(f"Learning senza l'artista ID 9765..")
 
+ # ...... TODO
 
 unlearning_main()
