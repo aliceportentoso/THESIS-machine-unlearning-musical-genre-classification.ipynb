@@ -5,6 +5,8 @@ from config import *
 def train(model, train_loader, val_loader, criterion, optimizer, device):
     patience = 30
     best_val_loss = float("inf")
+    best_val_loss = float('inf')
+    best_weights = None
     patience_counter = 0
 
     # liste per i plot
@@ -63,13 +65,14 @@ def train(model, train_loader, val_loader, criterion, optimizer, device):
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             patience_counter = 0
-            best_weights = model.state_dict()
+            best_weights = model.state_dict().copy()
         else:
             patience_counter += 1
             print(f"Patience_counter: {patience_counter}")
             if patience_counter >= patience:
                 print(f"Early stopping at epoch {epoch + 1}")
-                model.load_state_dict(best_weights)
+                if best_weights is not None:
+                    model.load_state_dict(best_weights)
                 break
 
         # ---- PLOT IN TEMPO REALE ----

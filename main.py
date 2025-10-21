@@ -1,4 +1,6 @@
 from collections import Counter
+
+import numpy as np
 from torch.utils.data import DataLoader
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
@@ -18,7 +20,7 @@ print_config()
 tracks = pd.read_csv(CSV_FILE,  index_col=0, header=[0,1])
 
 small_tracks = tracks[tracks[('set', 'subset')] == SUBSET]
-track_genres = small_tracks[('track', 'genre_top')].dropna()
+track_genres = small_tracks[('track', 'genre_top')].dropna() #-> track_genres è 1 Rock, 2 Pop, 3 Electronic..
 
 if TYPE_FORGET is not None:
 
@@ -26,9 +28,8 @@ if TYPE_FORGET is not None:
     if TYPE_FORGET == "GENRE":
         genre_forget = 'Hip-Hop'
         print(f"Learning senza il genere {genre_forget}..")
-        genre_ids = tracks[tracks[('track', 'genre_top')] == genre_forget].index.drop([154308,155066]) #questo serve a non far eliminare completamente il genere
+        genre_ids = tracks[tracks[('track', 'genre_top')] == genre_forget].index #.drop([154308,155066]) #questo serve a non far eliminare completamente il genere
         track_genres = track_genres.drop(genre_ids, errors='ignore')
-        print(track_genres)
 
     if TYPE_FORGET == "ARTIST":
     #artisti id 9765, artist name Derek Clegg, 45 occorrenze in small
@@ -37,6 +38,7 @@ if TYPE_FORGET is not None:
         track_ids_to_drop = tracks[tracks[('artist','id')].isin(artist_to_drop)].index
         track_genres = track_genres.drop(track_ids_to_drop, errors='ignore')
 
+#track_genres è mapping id traccia -> nome genere
 track_genres = track_genres.drop([1486,2624,3284,5574,8669,10116,11583,12838,13529,14116,14180,20814,22554,23429,23430,
                                   23431,25173,25174,25175,25176,25180,29345,29346,29352,29356,33411,33413,33414,33417,
                                   33418,33419,33425,35725,39363,41745,42986,43753,50594,50782,53668,54569,54582,61480,
@@ -51,13 +53,28 @@ track_genres = track_genres.drop([1486,2624,3284,5574,8669,10116,11583,12838,135
                                   144619,145056,146056,147419,147424,148786,148787,148788,148789,148790,148791,148792,
                                   148793,148794,148795,151920,155051, 134956], errors='ignore') # dataset errors
 
-track_ids = track_genres.index.values
+classes = ["Electronic", "Experimental", "Folk", "Hip-Hop", "Instrumental", "International", "Pop", "Rock"]
 le = LabelEncoder()
-labels = le.fit_transform(track_genres.values)
+le.fit(classes)
+labels = le.transform(track_genres)
+joblib.dump(le, ENCODER_PATH)
+
+track_ids = track_genres.index.values
 
 train_ids, test_ids, train_labels, test_labels = train_test_split(
     track_ids, labels, test_size=0.2, random_state=42, stratify=labels
 )
+
+
+# Carica il file dei metadati (con multi-index di colonne)
+tracks = pd.read_csv(CSV_FILE, index_col=0, header=[0, 1])
+
+# Se ti serve solo la colonna del genere principale
+genres_series = tracks.loc[test_ids, ('track', 'genre_top')]
+
+# Mostra i generi corrispondenti ai tuoi test_ids
+print(genres_series)
+
 
 train_ids, val_ids, train_labels, val_labels = train_test_split(
     train_ids, train_labels, test_size=0.2, random_state=42, stratify=train_labels
@@ -75,6 +92,12 @@ joblib.dump(test_labels, "joblib/test_labels.joblib")
 train_dataset = FMADataset(train_ids, train_labels)
 val_dataset   = FMADataset(val_ids, val_labels)
 test_dataset  = FMADataset(test_ids, test_labels)
+
+print(Counter(train_dataset.labels))
+print(Counter(val_dataset.labels))
+print(Counter(test_dataset.labels))
+
+print(test_dataset)
 train_loader = DataLoader(train_dataset,batch_size=BATCH_SIZE, shuffle=True,  num_workers=NUM_WORKERS)
 val_loader   = DataLoader(val_dataset,  batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS)
 test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS)
@@ -98,11 +121,10 @@ start_time = time.time()
 train(model, train_loader, val_loader, criterion, optimizer, DEVICE)
 
 # --- Evaluation ---
-accuracy = evaluate(model, test_loader, label_encoder=LabelEncoder().fit(track_genres.values))
-#accuracy = evaluate(model, test_loader, label_encoder=None)
+accuracy = evaluate(model, test_loader, label_encoder=le, type_eval="Learning")
 joblib.dump(accuracy, "joblib/accuracy_train.joblib")
 
-# --- Save ---
+# --- Save Model ---
 torch.save(model.state_dict(), MODEL_PATH)
-joblib.dump(LabelEncoder().fit(track_genres.values), ENCODER_PATH)
+
 print(f"Tempo Learning: {(time.time()-start_time)/3600:.2f} ore")

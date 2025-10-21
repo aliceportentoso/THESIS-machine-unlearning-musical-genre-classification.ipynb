@@ -13,8 +13,6 @@ def unlearning_main():
     # --- CARICA MODELLO E LABEL ENCODER ---
     model = Cnn6().to(DEVICE)
     model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE)) # carica i pesi salvati dall'addestramento
-    #model.load_state_dict(torch.load("saved_models/fma_cnn_small_lr_0.0001.pth", map_location=DEVICE))  # carica i pesi salvati dall'addestramento
-
     model.eval()
 
     le = joblib.load(ENCODER_PATH)
@@ -31,8 +29,8 @@ def unlearning_main():
     # FORGET GENRE
     forget_ids, forget_labels, retain_ids, retain_labels = forget_genre(train_ids, train_labels, le, genre_to_remove="Hip-Hop")
 
-    #FORGET ARTIST
-#    forget_ids, forget_labels, retain_ids, retain_labels = forget_artist(train_ids, train_labels)
+    # FORGET ARTIST
+    # forget_ids, forget_labels, retain_ids, retain_labels = forget_artist(train_ids, train_labels)
 
     retain_dataset = FMADataset(retain_ids, retain_labels)
     forget_dataset = FMADataset(forget_ids, forget_labels)
@@ -56,9 +54,8 @@ def unlearning_main():
 
     # --- evaluate ---
     evaluate_unlearning(model, forget_loader, retain_loader, val_loader, accuracy_train)
-    evaluate(model, val_loader, le)
-    print(f"Tempo Unlearning: {time.time() - start_time:.2f} s")
-
+    evaluate(model, val_loader, le, type_eval = "Unlearning")
+    print(f"Tempo Unlearning: {(time.time() - start_time)/3600:.2f} ore")
 
 def unl_fine_tuning(model, forget_loader, criterion, optimizer):
     """
@@ -145,6 +142,5 @@ def forget_genre(train_ids, train_labels, le, genre_to_remove="Hip-Hop"):
 
 def forget_artist():
     a = 1
-
 
 unlearning_main()
