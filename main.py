@@ -1,4 +1,5 @@
 from collections import Counter
+import numpy as np
 from torch.utils.data import DataLoader
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
@@ -20,15 +21,17 @@ tracks = pd.read_csv(CSV_FILE,  index_col=0, header=[0,1])
 small_tracks = tracks[tracks[('set', 'subset')] == SUBSET]
 track_genres = small_tracks[('track', 'genre_top')].dropna()
 
+classes = ["Electronic", "Experimental", "Folk", "Hip-Hop", "Instrumental", "International", "Pop", "Rock"]
+le = LabelEncoder()
+le.fit(classes)
+
 if TYPE_FORGET is not None:
 
     # RIMUOVI IL GENERE
     if TYPE_FORGET == "GENRE":
-        genre_forget = 'Hip-Hop'
-        print(f"Learning senza il genere {genre_forget}..")
-        genre_ids = tracks[tracks[('track', 'genre_top')] == genre_forget].index.drop([154308,155066]) #questo serve a non far eliminare completamente il genere
+        print(f"Learning senza il genere {GENRE_TO_FORGET}..")
+        genre_ids = small_tracks[small_tracks[('track', 'genre_top')] == GENRE_TO_FORGET].index #questo serve a non far eliminare completamente il genere
         track_genres = track_genres.drop(genre_ids, errors='ignore')
-        print(track_genres)
 
     if TYPE_FORGET == "ARTIST":
     #artisti id 9765, artist name Derek Clegg, 45 occorrenze in small
@@ -51,9 +54,8 @@ track_genres = track_genres.drop([1486,2624,3284,5574,8669,10116,11583,12838,135
                                   144619,145056,146056,147419,147424,148786,148787,148788,148789,148790,148791,148792,
                                   148793,148794,148795,151920,155051, 134956], errors='ignore') # dataset errors
 
-track_ids = track_genres.index.values
-le = LabelEncoder()
-labels = le.fit_transform(track_genres.values)
+track_ids = track_genres.index.values  # ok, sono gli ID
+labels = le.transform(track_genres)
 
 train_ids, test_ids, train_labels, test_labels = train_test_split(
     track_ids, labels, test_size=0.2, random_state=42, stratify=labels
@@ -98,8 +100,8 @@ start_time = time.time()
 train(model, train_loader, val_loader, criterion, optimizer, DEVICE)
 
 # --- Evaluation ---
-accuracy = evaluate(model, test_loader, label_encoder=LabelEncoder().fit(track_genres.values))
-#accuracy = evaluate(model, test_loader, label_encoder=None)
+#accuracy = evaluate(model, test_loader, label_encoder=LabelEncoder().fit(track_genres.values))
+accuracy = evaluate(model, test_loader, label_encoder=le)
 joblib.dump(accuracy, "joblib/accuracy_train.joblib")
 
 # --- Save ---

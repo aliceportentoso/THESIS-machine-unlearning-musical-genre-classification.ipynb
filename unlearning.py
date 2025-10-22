@@ -10,6 +10,7 @@ import time
 
 def unlearning_main():
     start_time = time.time()
+
     # --- CARICA MODELLO E LABEL ENCODER ---
     model = Cnn6().to(DEVICE)
     model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE)) # carica i pesi salvati dall'addestramento
@@ -19,9 +20,8 @@ def unlearning_main():
 
     le = joblib.load(ENCODER_PATH)
 
-    mode = "last"
     # carica gli split
-    if mode == "base":
+    if TYPE_FORGET is None: #uso i dati del learning completo
         train_ids = joblib.load("joblib/train_ids_tot.joblib")
         train_labels = joblib.load("joblib/train_labels_tot.joblib")
         val_ids = joblib.load("joblib/val_ids_tot.joblib")
@@ -29,7 +29,7 @@ def unlearning_main():
         test_ids = joblib.load("joblib/test_ids_tot.joblib")
         test_labels = joblib.load("joblib/test_labels_tot.joblib")
         accuracy_train = joblib.load("joblib/accuracy_train_tot.joblib")
-    elif mode == "last":
+    else:
         train_ids = joblib.load("joblib/train_ids.joblib")
         train_labels = joblib.load("joblib/train_labels.joblib")
         val_ids = joblib.load("joblib/val_ids.joblib")
@@ -38,11 +38,9 @@ def unlearning_main():
         test_labels = joblib.load("joblib/test_labels.joblib")
         accuracy_train = joblib.load("joblib/accuracy_train.joblib")
 
-    # FORGET GENRE
-    forget_ids, forget_labels, retain_ids, retain_labels = forget_genre(train_ids, train_labels, le, genre_to_remove="Hip-Hop")
-
-    #FORGET ARTIST
-#    forget_ids, forget_labels, retain_ids, retain_labels = forget_artist(train_ids, train_labels)
+    forget_ids, forget_labels, retain_ids, retain_labels = forget_genre(train_ids, train_labels, le)
+   # elif TYPE_FORGET == "ARTIST":
+    #    forget_ids, forget_labels, retain_ids, retain_labels = forget_artist(train_ids, train_labels)
 
     retain_dataset = FMADataset(retain_ids, retain_labels)
     forget_dataset = FMADataset(forget_ids, forget_labels)
@@ -65,7 +63,7 @@ def unlearning_main():
     print(f"Modello aggiornato salvato in {UNL_MODEL_PATH}")
 
     # --- evaluate ---
-    evaluate_unlearning(model, forget_loader, retain_loader, val_loader, accuracy_train)
+    evaluate_unlearning(model, forget_loader, retain_loader, val_loader, accuracy_train, le)
     evaluate(model, val_loader, le)
     print(f"Tempo Unlearning: {time.time() - start_time:.2f} s")
 
@@ -135,10 +133,10 @@ def unl_gradient_ascent(model, forget_loader, retain_loader, criterion, optimize
         print(f"[Epoch {epoch+1}/{UNL_EPOCHS}] Forget Loss: {f_loss.item():.4f} | Retain Loss: {r_loss.item():.4f}")
     print(f"Complete {UNL_EPOCHS} of UNLEARNING con GRADIENT ASCENT")
 
-def forget_genre(train_ids, train_labels, le, genre_to_remove="Hip-Hop"):
+def forget_genre(train_ids, train_labels, le):
 
-    idx_to_remove = le.transform([genre_to_remove])[0]
-    print(f"Rimuovere il genere '{genre_to_remove}' (indice {idx_to_remove})")
+    idx_to_remove = le.transform([GENRE_TO_FORGET])[0]
+    print(f"Rimuovere il genere '{GENRE_TO_FORGET}' (indice {idx_to_remove})")
 
     # Filtra i dati
     forget_ids, forget_labels, retain_ids, retain_labels = [], [], [], []
@@ -153,7 +151,7 @@ def forget_genre(train_ids, train_labels, le, genre_to_remove="Hip-Hop"):
 
     return forget_ids, forget_labels, retain_ids, retain_labels
 
-def forget_artist():
+def forget_artist(train_ids, train_labels):
     #artisti id 9765, artist name Derek Clegg, 45 occorrenze in small
         artist_to_drop = [9765]
         print(f"Learning senza l'artista ID 9765..")

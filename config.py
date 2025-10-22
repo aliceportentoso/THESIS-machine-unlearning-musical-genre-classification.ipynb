@@ -3,7 +3,8 @@ import torch
 # --- CONFIG ---
 
 TYPE_FORGET = "GENRE" #GENRE, ARTIST, None
-MAX_EPOCHS = 200
+GENRE_TO_FORGET = 'Hip-Hop'
+MAX_EPOCHS = 50
 UNL_EPOCHS = 2
 
 MODEL_PATH = f'saved_models/epochs_{MAX_EPOCHS}.pth'
@@ -38,4 +39,3 @@ def print_config():
     print(f"Dataset subset : {SUBSET}")
     print(f"Device         : {DEVICE}")
     print(f"Type Forget    : {TYPE_FORGET}   ")
-
