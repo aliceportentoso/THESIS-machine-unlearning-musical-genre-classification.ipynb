@@ -13,34 +13,29 @@ def unlearning_main():
 
     # --- CARICA MODELLO E LABEL ENCODER ---
     model = Cnn6().to(DEVICE)
-    model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE)) # carica i pesi salvati dall'addestramento
-    #model.load_state_dict(torch.load("saved_models/fma_cnn_small_lr_0.0001.pth", map_location=DEVICE))  # carica i pesi salvati dall'addestramento
-
+    model.load_state_dict(torch.load(LEARN_MODEL_PATH, map_location=DEVICE)) # carica i pesi salvati dall'addestramento
     model.eval()
-
     le = joblib.load(ENCODER_PATH)
 
-    # carica gli split
-    if TYPE_FORGET is None: #uso i dati del learning completo
-        train_ids = joblib.load("joblib/train_ids_tot.joblib")
-        train_labels = joblib.load("joblib/train_labels_tot.joblib")
-        val_ids = joblib.load("joblib/val_ids_tot.joblib")
-        val_labels = joblib.load("joblib/val_labels_tot.joblib")
-        test_ids = joblib.load("joblib/test_ids_tot.joblib")
-        test_labels = joblib.load("joblib/test_labels_tot.joblib")
-        accuracy_train = joblib.load("joblib/accuracy_train_tot.joblib")
-    else:
-        train_ids = joblib.load("joblib/train_ids.joblib")
-        train_labels = joblib.load("joblib/train_labels.joblib")
-        val_ids = joblib.load("joblib/val_ids.joblib")
-        val_labels = joblib.load("joblib/val_labels.joblib")
-        test_ids = joblib.load("joblib/test_ids.joblib")
-        test_labels = joblib.load("joblib/test_labels.joblib")
-        accuracy_train = joblib.load("joblib/accuracy_train.joblib")
+    # carica gli split #DA SISTEMARE
 
-    forget_ids, forget_labels, retain_ids, retain_labels = forget_genre(train_ids, train_labels, le)
-   # elif TYPE_FORGET == "ARTIST":
-    #    forget_ids, forget_labels, retain_ids, retain_labels = forget_artist(train_ids, train_labels)
+    dir = f"data_splits/{SUBSET}-dataset_remove-None"
+
+    train_ids = joblib.load(f"{dir}/train_ids.joblib")
+    train_labels = joblib.load(f"{dir}/train_labels.joblib")
+    val_ids = joblib.load(f"{dir}/val_ids.joblib")
+    val_labels = joblib.load(f"{dir}/val_labels.joblib")
+    test_ids = joblib.load(f"{dir}/test_ids.joblib")
+    test_labels = joblib.load(f"{dir}/test_labels.joblib")
+
+ #   accuracy_train = joblib.load(f"losses/accuracy_train_{NAME}.joblib")
+
+
+    if GENRE_TO_FORGET is not None:
+        forget_ids, forget_labels, retain_ids, retain_labels = forget_genre(train_ids, train_labels, le)
+    # if TYPE_FORGET == "ARTIST":
+    #... TODO
+    # forget_ids, forget_labels, retain_ids, retain_labels = forget_artist(train_ids, train_labels)
 
     retain_dataset = FMADataset(retain_ids, retain_labels)
     forget_dataset = FMADataset(forget_ids, forget_labels)
@@ -59,12 +54,11 @@ def unlearning_main():
     unl_gradient_ascent(model, forget_loader, retain_loader, criterion, optimizer)
 
     # --- SALVA MODELLO AGGIORNATO ---
-    torch.save(model.state_dict(), UNL_MODEL_PATH)
-    print(f"Modello aggiornato salvato in {UNL_MODEL_PATH}")
+    #torch.save(model.state_dict(), UNL_MODEL_PATH)
+    #print(f"Modello aggiornato salvato in {UNL_MODEL_PATH}")
 
     # --- evaluate ---
-    evaluate_unlearning(model, forget_loader, retain_loader, val_loader, accuracy_train, le)
-    evaluate(model, val_loader, le)
+    evaluate_unlearning(model, forget_loader, retain_loader, val_loader, le)
     print(f"Tempo Unlearning: {time.time() - start_time:.2f} s")
 
 
@@ -85,7 +79,7 @@ def unl_fine_tuning(model, forget_loader, criterion, optimizer):
 
     print(f"Complete {UNL_EPOCHS} of UNLEARNING con FINE TUNING")
 
-def unl_gradient_ascent(model, forget_loader, retain_loader, criterion, optimizer, alpha=0.1, beta=0.9):
+def unl_gradient_ascent(model, forget_loader, retain_loader, criterion, optimizer, alpha=0.4, beta=0.8):
     """
     Algoritmo di unlearning più complesso:
     - Usa gradient ascent sui dati da dimenticare.
@@ -156,6 +150,6 @@ def forget_artist(train_ids, train_labels):
         artist_to_drop = [9765]
         print(f"Learning senza l'artista ID 9765..")
 
- # ...... TODO
+ # ..... TODO
 
 unlearning_main()

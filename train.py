@@ -1,11 +1,14 @@
+import copy
+
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from config import *
 
 def train(model, train_loader, val_loader, criterion, optimizer, device):
-    patience = 30
+    patience = 20
     best_val_loss = float("inf")
     patience_counter = 0
+    best_weights = None
 
     # liste per i plot
     train_losses, val_losses = [], []
@@ -58,39 +61,38 @@ def train(model, train_loader, val_loader, criterion, optimizer, device):
               f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} | "
               f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
 
-        best_weights = 0
+
         # ---- EARLY STOPPING ----
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             patience_counter = 0
-            best_weights = model.state_dict()
+            best_weights = copy.deepcopy(model.state_dict())
         else:
             patience_counter += 1
             print(f"Patience_counter: {patience_counter}")
             if patience_counter >= patience:
                 print(f"Early stopping at epoch {epoch + 1}")
-                model.load_state_dict(best_weights)
+                if best_weights is not None:
+                    model.load_state_dict(best_weights)
                 break
 
-        # ---- PLOT IN TEMPO REALE ----
-        if epoch % 5 == 0:
-            plt.figure(figsize=(12, 5))
+        plt.figure(figsize=(12, 5))
 
-            # Loss
-            plt.subplot(1, 2, 1)
-            plt.plot(train_losses, label="Train Loss")
-            plt.plot(val_losses, label="Val Loss")
-            plt.legend()
-            plt.title("Loss")
+    # Loss
+    plt.subplot(1, 2, 1)
+    plt.plot(train_losses, label="Train Loss")
+    plt.plot(val_losses, label="Val Loss")
+    plt.legend()
+    plt.title("Loss")
+# bbox_inch
+    # Accuracy
+    plt.subplot(1, 2, 2)
+    plt.plot(train_accs, label="Train Acc")
+    plt.plot(val_accs, label="Val Acc")
+    plt.legend()
+    plt.title("Accuracy")
 
-            # Accuracy
-            plt.subplot(1, 2, 2)
-            plt.plot(train_accs, label="Train Acc")
-            plt.plot(val_accs, label="Val Acc")
-            plt.legend()
-            plt.title("Accuracy")
-
-            plt.show()
-
+    plt.savefig(f"results/loss_accuracy_{NAME}.png", bbox_inches='tight')  # bbox_inch
+    plt.show()
 
     return model, (train_losses, val_losses, train_accs, val_accs)

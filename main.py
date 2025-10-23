@@ -1,5 +1,4 @@
-from collections import Counter
-import numpy as np
+import os
 from torch.utils.data import DataLoader
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
@@ -24,16 +23,17 @@ track_genres = small_tracks[('track', 'genre_top')].dropna()
 classes = ["Electronic", "Experimental", "Folk", "Hip-Hop", "Instrumental", "International", "Pop", "Rock"]
 le = LabelEncoder()
 le.fit(classes)
+joblib.dump(le, ENCODER_PATH)# -> non serve se è sempre lo stesso
 
-if TYPE_FORGET is not None:
+if GENRE_TO_REMOVE is not None:
 
     # RIMUOVI IL GENERE
-    if TYPE_FORGET == "GENRE":
-        print(f"Learning senza il genere {GENRE_TO_FORGET}..")
-        genre_ids = small_tracks[small_tracks[('track', 'genre_top')] == GENRE_TO_FORGET].index #questo serve a non far eliminare completamente il genere
-        track_genres = track_genres.drop(genre_ids, errors='ignore')
+    #if GENRE_TO_REMOVE == "GENRE":
+    print(f"Learning senza il genere {GENRE_TO_FORGET}..")
+    genre_ids = small_tracks[small_tracks[('track', 'genre_top')] == GENRE_TO_FORGET].index #questo serve a non far eliminare completamente il genere
+    track_genres = track_genres.drop(genre_ids, errors='ignore')
 
-    if TYPE_FORGET == "ARTIST":
+    if GENRE_TO_REMOVE == "ARTIST":
     #artisti id 9765, artist name Derek Clegg, 45 occorrenze in small
         artist_to_drop = [9765]
         print(f"Learning senza l'artista ID 9765..")
@@ -65,13 +65,16 @@ train_ids, val_ids, train_labels, val_labels = train_test_split(
     train_ids, train_labels, test_size=0.2, random_state=42, stratify=train_labels
 )
 
-# SAVE SPLIT
-joblib.dump(train_ids, "joblib/train_ids.joblib")
-joblib.dump(train_labels, "joblib/train_labels.joblib")
-joblib.dump(val_ids, "joblib/val_ids.joblib")
-joblib.dump(val_labels, "joblib/val_labels.joblib")
-joblib.dump(test_ids, "joblib/test_ids.joblib")
-joblib.dump(test_labels, "joblib/test_labels.joblib")
+# SAVE SPLITS
+if not os.path.isdir(SPLITS_DIR): # se la cartella non esiste la creo
+    os.makedirs(SPLITS_DIR, exist_ok=True)
+
+    joblib.dump(train_ids, f"{SPLITS_DIR}/train_ids.joblib")
+    joblib.dump(train_labels, f"{SPLITS_DIR}/train_labels.joblib")
+    joblib.dump(val_ids, f"{SPLITS_DIR}/val_ids.joblib")
+    joblib.dump(val_labels, f"{SPLITS_DIR}/val_labels.joblib")
+    joblib.dump(test_ids, f"{SPLITS_DIR}/test_ids.joblib")
+    joblib.dump(test_labels, f"{SPLITS_DIR}/test_labels.joblib")
 
 # CREATE DATASET AND ITERATORS
 train_dataset = FMADataset(train_ids, train_labels)
@@ -100,11 +103,9 @@ start_time = time.time()
 train(model, train_loader, val_loader, criterion, optimizer, DEVICE)
 
 # --- Evaluation ---
-#accuracy = evaluate(model, test_loader, label_encoder=LabelEncoder().fit(track_genres.values))
 accuracy = evaluate(model, test_loader, label_encoder=le)
-joblib.dump(accuracy, "joblib/accuracy_train.joblib")
+# joblib.dump(accuracy, f"results/accuracy_train_{NAME}.joblib") -> se non cambia l'ho già salvato
 
 # --- Save ---
 torch.save(model.state_dict(), MODEL_PATH)
-joblib.dump(LabelEncoder().fit(track_genres.values), ENCODER_PATH)
 print(f"Tempo Learning: {(time.time()-start_time)/3600:.2f} ore")

@@ -1,16 +1,27 @@
 import torch
+from datetime import datetime
+timestamp = datetime.now().strftime("%Y%m%d-%H%M")
+
+LR = 0.00002
+
+# LEARN
+#REMOVE = None #GENRE, ARTIST, None
+GENRE_TO_REMOVE = None #"Hip-Hop"
+MAX_EPOCHS = 200
+NAME = f'LR-{LR}_learning_{timestamp}_remove-{GENRE_TO_REMOVE}_epochs-{MAX_EPOCHS}'
+MODEL_PATH = f'saved_models/model_{NAME}.pth'
+ENCODER_PATH = 'label_encoder.joblib'
+
+# UNLEARN
+#TYPE_FORGET = None #GENRE, ARTIST, None
+GENRE_TO_FORGET = 'Hip-Hop'
+UNL_EPOCHS = 3
+UNL_NAME = f'unlearning_{timestamp}_forget-{GENRE_TO_FORGET}_epochs-{UNL_EPOCHS}'
+UNL_MODEL_PATH = f'saved_models/model_{UNL_NAME}.pth'
+
+LEARN_MODEL_PATH = 'saved_models/model_learning_20251022-1824_remove-None_epochs-200.pth'
 
 # --- CONFIG ---
-
-TYPE_FORGET = "GENRE" #GENRE, ARTIST, None
-GENRE_TO_FORGET = 'Hip-Hop'
-MAX_EPOCHS = 50
-UNL_EPOCHS = 2
-
-MODEL_PATH = f'saved_models/epochs_{MAX_EPOCHS}.pth'
-UNL_MODEL_PATH = f'saved_models/unlearning_epochs_{UNL_EPOCHS}.pth'
-
-# -----
 
 SAMPLE_RATE = 22050
 WINDOW_SIZE = 1024
@@ -22,15 +33,16 @@ NUM_CLASSES = 8 # 8 per small, 16 per medium, 161 per large
 NUM_FRAMES = 1292
 
 DURATION = 30
-BATCH_SIZE = 32 #meno per small
-LR = 0.0001
+BATCH_SIZE = 32 # da aumentare per mediu,
 
-AUDIO_DIR, CSV_FILE = 'fma_small', 'fma_metadata/tracks.csv'
+
 SUBSET = 'small'
+AUDIO_DIR = f'fma_{SUBSET}'
+CSV_FILE = 'fma_metadata/tracks.csv'
+SPLITS_DIR = f"data_splits/{SUBSET}-dataset_remove-{GENRE_TO_REMOVE}"
+
 NUM_WORKERS = 4 # 4 per small, o 8
 DEVICE = torch.device("cuda")
-ENCODER_PATH = 'joblib/label_encoder.joblib'
-
 
 def print_config():
     print("---- TRAINING CONFIG ----")
@@ -38,4 +50,3 @@ def print_config():
     print(f"Learning rate  : {LR}")
     print(f"Dataset subset : {SUBSET}")
     print(f"Device         : {DEVICE}")
-    print(f"Type Forget    : {TYPE_FORGET}   ")
