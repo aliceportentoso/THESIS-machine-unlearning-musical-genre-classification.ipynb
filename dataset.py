@@ -1,3 +1,4 @@
+from collections import Counter
 from torch.utils.data import Dataset
 import torchaudio
 import os
@@ -38,10 +39,31 @@ def preprocessing(filepath, num_samples=SAMPLE_RATE * DURATION):
     return mel_spec
 
 class FMADataset(Dataset):
-    def __init__(self, track_ids, labels):
+    def __init__(self, track_ids, labels, augmenter = None, min_count = 100):
         self.track_ids = track_ids
         self.labels = labels
         self.num_samples = SAMPLE_RATE * DURATION
+        self.augmenter = augmenter
+
+        if self.augmenter is not None:
+            # Conto le occorrenze di ogni classe
+            counter = Counter(labels)
+
+            # Creo liste finali bilanciate
+            self.track_ids = []
+            self.labels = []
+
+            for idx, label in enumerate(labels):
+                self.track_ids.append(track_ids[idx])
+                self.labels.append(label)
+
+                # Se la classe è rara (<min_count), replica con augmentation
+                if counter[label] < min_count:
+                    n_repeat = (min_count - counter[label])/2
+                    for x in range(int(n_repeat)):
+                        print(f"adding {x} in {label}")
+                        self.track_ids.append(track_ids[idx])
+                        self.labels.append(label)
 
     def __len__(self):
         return len(self.track_ids)
@@ -55,5 +77,8 @@ class FMADataset(Dataset):
         filepath = os.path.join(AUDIO_DIR, folder, tid_str + '.mp3')
 
         mel_spec = preprocessing(filepath, self.num_samples)
+
+        if self.augmenter is not None and idx >= len(self.track_ids):
+            mel_spec = self.augmenter(mel_spec)
 
         return mel_spec, int(label)

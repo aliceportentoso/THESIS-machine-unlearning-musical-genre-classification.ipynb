@@ -2,11 +2,11 @@ import joblib
 from torch.utils.data import DataLoader
 
 from eval import evaluate_unlearning
-from eval import evaluate
 from dataset import FMADataset
 from model import Cnn6
 from config import *
 import time
+import matplotlib.pyplot as plt
 
 def unlearning_main():
     start_time = time.time()
@@ -30,9 +30,8 @@ def unlearning_main():
 
  #   accuracy_train = joblib.load(f"losses/accuracy_train_{NAME}.joblib")
 
-
-    if GENRE_TO_FORGET is not None:
-        forget_ids, forget_labels, retain_ids, retain_labels = forget_genre(train_ids, train_labels, le)
+    #if GENRE_TO_FORGET is not None:
+    forget_ids, forget_labels, retain_ids, retain_labels = forget_genre(train_ids, train_labels, le, GENRE_TO_FORGET)
     # if TYPE_FORGET == "ARTIST":
     #... TODO
     # forget_ids, forget_labels, retain_ids, retain_labels = forget_artist(train_ids, train_labels)
@@ -59,7 +58,7 @@ def unlearning_main():
 
     # --- evaluate ---
     evaluate_unlearning(model, forget_loader, retain_loader, val_loader, le)
-    print(f"Tempo Unlearning: {time.time() - start_time:.2f} s")
+    print(f"Tempo Unlearning: {(time.time() - start_time)/3600:.2f} ore")
 
 
 def unl_fine_tuning(model, forget_loader, criterion, optimizer):
@@ -79,18 +78,21 @@ def unl_fine_tuning(model, forget_loader, criterion, optimizer):
 
     print(f"Complete {UNL_EPOCHS} of UNLEARNING con FINE TUNING")
 
-def unl_gradient_ascent(model, forget_loader, retain_loader, criterion, optimizer, alpha=0.4, beta=0.8):
+def unl_gradient_ascent(model, forget_loader, retain_loader, criterion, optimizer, alpha=0.4, beta=0.6):
     """
     Algoritmo di unlearning più complesso:
     - Usa gradient ascent sui dati da dimenticare.
     - Usa gradient descent sui dati da mantenere (regolarizzazione).
     - Controlla il bilanciamento tramite i pesi alpha e beta.
     """
+    losses = []
 
     model.train()
     for epoch in range(UNL_EPOCHS):
         forget_iter = iter(forget_loader)
         retain_iter = iter(retain_loader)
+        epoch_loss = 0.0
+        total_batches = 0
 
         for _ in range(min(len(forget_loader), len(retain_loader))):
             # --- Batch da dimenticare ---
@@ -116,7 +118,6 @@ def unl_gradient_ascent(model, forget_loader, retain_loader, criterion, optimize
             # Forward su dati da mantenere
             r_outputs = model(r_inputs)['clipwise_output']
             r_loss = criterion(r_outputs, r_labels)
-
             # Loss combinata:
             #   -alpha * f_loss → ascent (disimparare)
             #   +beta * r_loss → descent (preservare conoscenza utile)
@@ -124,10 +125,25 @@ def unl_gradient_ascent(model, forget_loader, retain_loader, criterion, optimize
             loss.backward()
             optimizer.step()
 
-        print(f"[Epoch {epoch+1}/{UNL_EPOCHS}] Forget Loss: {f_loss.item():.4f} | Retain Loss: {r_loss.item():.4f}")
+        epoch_loss += loss.item()
+        total_batches += 1
+
+        avg_loss = epoch_loss / total_batches
+        losses.append(avg_loss)
+
+        print(f"[Epoch {epoch + 1}/{UNL_EPOCHS}] Loss: {avg_loss:.4f}")
+        print(f"[Epoch {epoch + 1}/{UNL_EPOCHS}] Forget Loss: {f_loss.item():.4f} | Retain Loss: {r_loss.item():.4f}")
+
+    # --- Plot finale ---
+    plt.figure(figsize=(8, 5))
+    plt.plot(losses, marker='o')
+    plt.title("Loss")
+    plt.show()
+    plt.savefig(f"results/{UNL_NAME}_LOSS.png", bbox_inches='tight')  # bbox_inch
+
     print(f"Complete {UNL_EPOCHS} of UNLEARNING con GRADIENT ASCENT")
 
-def forget_genre(train_ids, train_labels, le):
+def forget_genre(train_ids, train_labels, le, genre_to_forget):
 
     idx_to_remove = le.transform([GENRE_TO_FORGET])[0]
     print(f"Rimuovere il genere '{GENRE_TO_FORGET}' (indice {idx_to_remove})")
