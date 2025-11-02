@@ -61,7 +61,6 @@ class FMADataset(Dataset):
                 if counter[label] < min_count:
                     n_repeat = (min_count - counter[label])/2
                     for x in range(int(n_repeat)):
-                        print(f"adding {x} in {label}")
                         self.track_ids.append(track_ids[idx])
                         self.labels.append(label)
 

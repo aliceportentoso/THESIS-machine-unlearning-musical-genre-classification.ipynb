@@ -17,23 +17,26 @@ from eval import evaluate
 from config import *
 
 print_config()
-
 # LOAD DATA AND FILTER
 tracks = pd.read_csv(CSV_FILE,  index_col=0, header=[0,1])
 
-small_tracks = tracks[tracks[('set', 'subset')] == SUBSET]
-track_genres = small_tracks[('track', 'genre_top')].dropna()
+#sub_tracks = tracks[tracks[('set', 'subset')].isin(["small", "medium"])] #25 mila
+#sub_tracks = tracks[tracks[('set', 'subset')] == "medium"]
+sub_tracks = tracks[tracks[('set', 'subset')].isin(["small", "medium"])] #106 mila
+
+track_genres = sub_tracks[('track', 'genre_top')].dropna() #49 mila
 track_genres = track_genres.sort_values()
 
-classes = []
-if SUBSET == "small":
-    classes = ["Electronic", "Experimental", "Folk", "Hip-Hop", "Instrumental", "International", "Pop", "Rock"]
-if SUBSET == "medium":
-    classes = ["Blues", "Classical", "Country", "Easy Listening", "Electronic", "Experimental", "Folk", "Hip-Hop",
-               "Instrumental", "International", "Jazz", "Old-Time / Historic", "Pop", "Rock", "Soul-RnB", "Spoken"]
+genres_to_exclude = ['Easy Listening', 'Blues', 'Soul-RnB', 'Country', 'Classical', 'Old-Time / Historic', 'Jazz', 'Spoken']
+
+track_genres = track_genres[~track_genres.isin(genres_to_exclude)]
+classes = genres_list = track_genres.unique().tolist()
+
+ #   classes = [x for x in classes_tot if x not in genres_to_exclude]
 
 # --- Limit class size to 300 ---
-MAX_PER_CLASS = 1000
+MAX_PER_CLASS = 2500
+print(f"max per class: {MAX_PER_CLASS}")
 balanced_indices = []
 
 for cls in classes:
@@ -45,21 +48,19 @@ for cls in classes:
 
 track_genres = track_genres.loc[balanced_indices]
 
+genre_counts2 = track_genres.value_counts()
+print(genre_counts2)
+
 le = LabelEncoder()
 le.fit(classes)
-joblib.dump(le, ENCODER_PATH)# -> non serve se è sempre lo stesso
-
-counter = Counter(track_genres)
-for classes, count in counter.items():
-    print(f"Classe {classes}: {count} occorrenze")
-
+joblib.dump(le, ENCODER_PATH) # -> non serve se è sempre lo stesso
 
 if GENRE_TO_REMOVE is not None:
 
     # RIMUOVI IL GENERE
     #if GENRE_TO_REMOVE == "GENRE":
     print(f"Learning senza il genere {GENRE_TO_FORGET}..")
-    genre_ids = small_tracks[small_tracks[('track', 'genre_top')] == GENRE_TO_FORGET].index #questo serve a non far eliminare completamente il genere
+    genre_ids = sub_tracks[sub_tracks[('track', 'genre_top')] == GENRE_TO_FORGET].index #questo serve a non far eliminare completamente il genere
     track_genres = track_genres.drop(genre_ids, errors='ignore')
 
     if GENRE_TO_REMOVE == "ARTIST":

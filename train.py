@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from config import *
 
 def train(model, train_loader, val_loader, criterion, optimizer, device):
-    patience = 20
+    patience = 30
     best_val_loss = float("inf")
     patience_counter = 0
     best_weights = None
@@ -37,22 +37,6 @@ def train(model, train_loader, val_loader, criterion, optimizer, device):
         train_losses.append(train_loss)
         train_accs.append(train_acc)
 
-        # Loss
-        plt.subplot(1, 2, 1)
-        plt.plot(train_losses, label="Train Loss")
-        plt.plot(val_losses, label="Val Loss")
-        plt.legend()
-        plt.title("Loss")
-        # bbox_inch
-        # Accuracy
-        plt.subplot(1, 2, 2)
-        plt.plot(train_accs, label="Train Acc")
-        plt.plot(val_accs, label="Val Acc")
-        plt.legend()
-        plt.title("Accuracy")
-        plt.show()
-        plt.savefig(f"results/progress-{NAME}_LOSS.png", bbox_inches='tight')  # bbox_inch
-
         # ---- VALIDATION ----
         model.eval()
         val_loss, correct, total = 0, 0, 0
@@ -73,29 +57,47 @@ def train(model, train_loader, val_loader, criterion, optimizer, device):
         val_losses.append(val_loss)
         val_accs.append(val_acc)
 
+        if epoch % 2 == 0 and epoch != 0:
+            print_loss(train_losses, val_losses, train_accs, val_accs)
+            plt.savefig(f"results/PROGRESS_epoch-{epoch}-{NAME}_LOSS.png", bbox_inches='tight')  # bbox_inch
+            plt.show()
+
         print(f"Epoch {epoch + 1}/{MAX_EPOCHS} | "
               f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} | "
               f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
 
-        early_stop = True
+        # ---- EARLY STOPPING ----
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            patience_counter = 0
+            best_weights = copy.deepcopy(model.state_dict())
+        else:
+            patience_counter += 1
+            print(f"Patience_counter: {patience_counter}")
+            if patience_counter >= patience:
+                print(f"Early stopping at epoch {epoch + 1}")
+                if best_weights is not None:
+                    model.load_state_dict(best_weights)
+                break
 
-        if early_stop:
-            # ---- EARLY STOPPING ----
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                patience_counter = 0
-                best_weights = copy.deepcopy(model.state_dict())
-            else:
-                patience_counter += 1
-                print(f"Patience_counter: {patience_counter}")
-                if patience_counter >= patience:
-                    print(f"Early stopping at epoch {epoch + 1}")
-                    if best_weights is not None:
-                        model.load_state_dict(best_weights)
-                    break
-
-        plt.figure(figsize=(12, 5))
-
-    plt.savefig(f"results/{NAME}_LOSS.png", bbox_inches='tight')  # bbox_inch
+        print_loss(train_losses, val_losses, train_accs, val_accs)
+        plt.savefig(f"results/{NAME}_LOSS.png", bbox_inches='tight')  # bbox_inch
+        plt.show()
 
     return model, (train_losses, val_losses, train_accs, val_accs)
+
+
+def print_loss(train_losses, val_losses, train_accs, val_accs):
+    plt.figure(figsize=(10, 4))
+    plt.subplot(1, 2, 1)
+    plt.plot(train_losses, label="Train Loss")
+    plt.plot(val_losses, label="Val Loss")
+    plt.legend()
+    plt.title("Loss")
+    # bbox_inch
+    # Accuracy
+    plt.subplot(1, 2, 2)
+    plt.plot(train_accs, label="Train Acc")
+    plt.plot(val_accs, label="Val Acc")
+    plt.legend()
+    plt.title("Accuracy")
