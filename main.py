@@ -1,6 +1,3 @@
-import os
-from collections import Counter
-
 import numpy
 from torch.utils.data import DataLoader
 import pandas as pd
@@ -17,11 +14,10 @@ from eval import evaluate
 from config import *
 
 print_config()
-# LOAD DATA AND FILTER
 tracks = pd.read_csv(CSV_FILE,  index_col=0, header=[0,1])
 
 #sub_tracks = tracks[tracks[('set', 'subset')].isin(["small", "medium"])] #25 mila
-#sub_tracks = tracks[tracks[('set', 'subset')] == "medium"]
+#sub_tracks = tracks[tracks[('set', 'subset')] == "small"]
 sub_tracks = tracks[tracks[('set', 'subset')].isin(["small", "medium"])] #106 mila
 
 track_genres = sub_tracks[('track', 'genre_top')].dropna() #49 mila
@@ -32,24 +28,16 @@ genres_to_exclude = ['Easy Listening', 'Blues', 'Soul-RnB', 'Country', 'Classica
 track_genres = track_genres[~track_genres.isin(genres_to_exclude)]
 classes = genres_list = track_genres.unique().tolist()
 
- #   classes = [x for x in classes_tot if x not in genres_to_exclude]
-
-# --- Limit class size to 300 ---
-MAX_PER_CLASS = 2500
-print(f"max per class: {MAX_PER_CLASS}")
+# - elimina elementi per classi sovra rappresentate
+MAX_PER_CLASS = 3000
+print(f"max per class: {MAX_PER_CLASS}, NO augementer")
 balanced_indices = []
-
 for cls in classes:
     cls_indices = track_genres[track_genres == cls].index.tolist()
     if len(cls_indices) > MAX_PER_CLASS:
-        # undersample
         cls_indices = list(numpy.random.choice(cls_indices, MAX_PER_CLASS, replace=False))
     balanced_indices.extend(cls_indices)
-
 track_genres = track_genres.loc[balanced_indices]
-
-genre_counts2 = track_genres.value_counts()
-print(genre_counts2)
 
 le = LabelEncoder()
 le.fit(classes)
@@ -57,18 +45,9 @@ joblib.dump(le, ENCODER_PATH) # -> non serve se è sempre lo stesso
 
 if GENRE_TO_REMOVE is not None:
 
-    # RIMUOVI IL GENERE
-    #if GENRE_TO_REMOVE == "GENRE":
     print(f"Learning senza il genere {GENRE_TO_FORGET}..")
     genre_ids = sub_tracks[sub_tracks[('track', 'genre_top')] == GENRE_TO_FORGET].index #questo serve a non far eliminare completamente il genere
     track_genres = track_genres.drop(genre_ids, errors='ignore')
-
-    if GENRE_TO_REMOVE == "ARTIST":
-    #artisti id 9765, artist name Derek Clegg, 45 occorrenze in small
-        artist_to_drop = [9765]
-        print(f"Learning senza l'artista ID 9765..")
-        track_ids_to_drop = tracks[tracks[('artist','id')].isin(artist_to_drop)].index
-        track_genres = track_genres.drop(track_ids_to_drop, errors='ignore')
 
 track_genres = track_genres.drop([1486,2624,3284,5574,8669,10116,11583,12838,13529,14116,14180,20814,22554,23429,23430,
                                   23431,25173,25174,25175,25176,25180,29345,29346,29352,29356,33411,33413,33414,33417,
@@ -84,7 +63,7 @@ track_genres = track_genres.drop([1486,2624,3284,5574,8669,10116,11583,12838,135
                                   144619,145056,146056,147419,147424,148786,148787,148788,148789,148790,148791,148792,
                                   148793,148794,148795,151920,155051, 134956], errors='ignore') # dataset errors
 
-track_ids = track_genres.index.values  # ok, sono gli ID
+track_ids = track_genres.index.values
 labels = le.transform(track_genres)
 
 train_ids, test_ids, train_labels, test_labels = train_test_split(
@@ -96,21 +75,19 @@ train_ids, val_ids, train_labels, val_labels = train_test_split(
 )
 
 # SAVE SPLITS
-if not os.path.isdir(SPLITS_DIR): # se la cartella non esiste la creo
-    os.makedirs(SPLITS_DIR, exist_ok=True)
-
-    joblib.dump(train_ids, f"{SPLITS_DIR}/train_ids.joblib")
-    joblib.dump(train_labels, f"{SPLITS_DIR}/train_labels.joblib")
-    joblib.dump(val_ids, f"{SPLITS_DIR}/val_ids.joblib")
-    joblib.dump(val_labels, f"{SPLITS_DIR}/val_labels.joblib")
-    joblib.dump(test_ids, f"{SPLITS_DIR}/test_ids.joblib")
-    joblib.dump(test_labels, f"{SPLITS_DIR}/test_labels.joblib")
+#if not os.path.isdir(SPLITS_DIR): # se la cartella non esiste la creo
+#    os.makedirs(SPLITS_DIR, exist_ok=True)
+joblib.dump(train_ids, f"{SPLITS_DIR}/train_ids.joblib")
+joblib.dump(train_labels, f"{SPLITS_DIR}/train_labels.joblib")
+joblib.dump(val_ids, f"{SPLITS_DIR}/val_ids.joblib")
+joblib.dump(val_labels, f"{SPLITS_DIR}/val_labels.joblib")
+joblib.dump(test_ids, f"{SPLITS_DIR}/test_ids.joblib")
+joblib.dump(test_labels, f"{SPLITS_DIR}/test_labels.joblib")
 
 augmenter = SpecAugmentation(time_drop_width=64,time_stripes_num=2, freq_drop_width=8, freq_stripes_num=2)
-#augmenter = None
 
 # CREATE DATASET AND ITERATORS
-train_dataset = FMADataset(train_ids, train_labels, augmenter = augmenter)
+train_dataset = FMADataset(train_ids, train_labels, augmenter = None)
 val_dataset   = FMADataset(val_ids, val_labels)
 test_dataset  = FMADataset(test_ids, test_labels)
 train_loader = DataLoader(train_dataset,batch_size=BATCH_SIZE, shuffle=True,  num_workers=NUM_WORKERS)
@@ -121,7 +98,7 @@ test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, nu
 model = Cnn6()
 model.to(DEVICE)
 
-# prelevare un batch di dati, eseguire il forward pass, definire la loss e l’ottimizzatore.
+# batch di dati e forward pass
 batch_waveforms, batch_labels = next(iter(train_loader))
 batch_waveforms = batch_waveforms.to(DEVICE)
 batch_labels = batch_labels.to(DEVICE)
@@ -135,11 +112,9 @@ optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 start_time = time.time()
 train(model, train_loader, val_loader, criterion, optimizer, DEVICE)
 
-# --- Evaluation ---
+# --- Evaluation and save model
 accuracy = evaluate(model, test_loader, label_encoder=le)
-joblib.dump(accuracy, f"results/{NAME}_accuracy_train.joblib") #-> se non cambia l'ho già salvato
-
-# --- Save ---
+#joblib.dump(accuracy, f"results/{NAME}_accuracy_train.joblib") #-> se non cambia l'ho già salvato. serve per fare confronto pre e post, per dump
 torch.save(model.state_dict(), MODEL_PATH)
 
 print_config()
