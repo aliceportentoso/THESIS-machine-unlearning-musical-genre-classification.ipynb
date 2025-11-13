@@ -2,13 +2,12 @@ import torch
 from datetime import datetime
 timestamp = datetime.now().strftime("%Y%m%d-%H%M")
 
-LR = 0.0005
+LR = 0.0001
 SUBSET = 'medium'
 
 # LEARN
-#REMOVE = None #GENRE, ARTIST, None
-GENRE_TO_REMOVE = None #"Hip-Hop"
-MAX_EPOCHS = 400 #100
+GENRE_TO_REMOVE = None
+MAX_EPOCHS = 1
 
 if GENRE_TO_REMOVE is None:
     NAME = f'{timestamp}_LEARN_LR-{LR}_subset-{SUBSET}_epochs-{MAX_EPOCHS}'
@@ -19,13 +18,17 @@ MODEL_PATH = f'saved_models/{NAME}_model.pth'
 ENCODER_PATH = f'label_encoder_{SUBSET}.joblib'
 
 # UNLEARN
-#TYPE_FORGET = None #GENRE, ARTIST, None
-GENRE_TO_FORGET = "International"
-UNL_EPOCHS = 2
-UNL_NAME = f'{timestamp}_unl_forget-{GENRE_TO_FORGET}_epochs-{UNL_EPOCHS}'
+GENRE_TO_FORGET = "Experimental" # "Blues", "Classical", "Country", "Easy Listening", "Electronic", "Experimental", "Folk", "Hip-Hop"
+UNL_EPOCHS = 2 #15 per FT, 5 per GA
+UNL_METHOD = "FT" # FT, GA, ST, OSM, A
+UNL_NAME = f'METHOD_{UNL_METHOD}-genre_{GENRE_TO_FORGET}-{timestamp}' # unl-small-LR_5e-05-GA-4_epochs
 UNL_MODEL_PATH = f'saved_models/{UNL_NAME}_unl_model.pth'
 
-LEARN_MODEL_PATH = 'saved_models/model_learning_20251022-1824_remove-None_epochs-200.pth'
+if SUBSET == 'small':
+    LEARN_MODEL_PATH = 'saved_models/model_learning_20251022-1824_remove-None_epochs-200.pth'
+else:
+    LEARN_MODEL_PATH = 'saved_models/20251105-1251_LEARN_LR-0.0005_subset-medium_epochs-500_model.pth'
+                        #'20251102-0820_LEARN_LR-0.0005_subset-medium_epochs-400_model.pth')
 
 # --- CONFIG ---
 SAMPLE_RATE = 22050
@@ -42,10 +45,8 @@ if SUBSET == 'large':
     NUM_CLASSES = 8
 
 NUM_FRAMES = 1292
-
 DURATION = 30
-BATCH_SIZE = 32 # 32 -> (accuracy 2.14)      36 -> (accuracy 0.22)
-
+BATCH_SIZE = 32
 
 AUDIO_DIR = f'fma_large'
 CSV_FILE = 'fma_metadata/tracks.csv'
@@ -61,3 +62,10 @@ def print_config():
     print(f"Dataset subset : {SUBSET}")
     print(f"Device         : {DEVICE}")
     print(f"Num classes    : {NUM_CLASSES}")
+
+def print_config_unl():
+    print("---- UNLEARNING CONFIG ----")
+    print(f"Epochs         : {UNL_EPOCHS}")
+    print(f"Learning rate  : {LR}")
+    print(f"Dataset subset : {SUBSET}")
+    print(f"NAME           : {UNL_NAME}")
