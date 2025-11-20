@@ -16,28 +16,28 @@ from config import *
 print_config()
 tracks = pd.read_csv(CSV_FILE,  index_col=0, header=[0,1])
 
-#sub_tracks = tracks[tracks[('set', 'subset')].isin(["small", "medium"])] #25 mila
-#sub_tracks = tracks[tracks[('set', 'subset')] == "small"]
-sub_tracks = tracks[tracks[('set', 'subset')].isin(["small", "medium"])] #106 mila
+if SUBSET == "small":
+    sub_tracks = tracks[tracks[('set', 'subset')] == "small"]
+    track_genres = sub_tracks[('track', 'genre_top')].dropna()  # 49 mila
+    track_genres = track_genres.sort_values()
+else: # RIDUCI DIMENSIONE DI DATASET SMALL PER BILANCIARE
+    sub_tracks = tracks[tracks[('set', 'subset')].isin(["small", "medium"])] #106 mila
+    track_genres = sub_tracks[('track', 'genre_top')].dropna() #49 mila
+    track_genres = track_genres.sort_values()
 
-track_genres = sub_tracks[('track', 'genre_top')].dropna() #49 mila
-track_genres = track_genres.sort_values()
-
-genres_to_exclude = ['Easy Listening', 'Blues', 'Soul-RnB', 'Country', 'Classical', 'Old-Time / Historic', 'Jazz', 'Spoken']
-
-track_genres = track_genres[~track_genres.isin(genres_to_exclude)]
-classes = genres_list = track_genres.unique().tolist()
-
-# - elimina elementi per classi sovra rappresentate
-MAX_PER_CLASS = 3000
-print(f"max per class: {MAX_PER_CLASS}, NO augementer")
-balanced_indices = []
-for cls in classes:
-    cls_indices = track_genres[track_genres == cls].index.tolist()
-    if len(cls_indices) > MAX_PER_CLASS:
-        cls_indices = list(numpy.random.choice(cls_indices, MAX_PER_CLASS, replace=False))
-    balanced_indices.extend(cls_indices)
-track_genres = track_genres.loc[balanced_indices]
+    genres_to_exclude = ['Easy Listening', 'Blues', 'Soul-RnB', 'Country', 'Classical', 'Old-Time / Historic', 'Jazz', 'Spoken']
+    track_genres = track_genres[~track_genres.isin(genres_to_exclude)]
+    classes = genres_list = track_genres.unique().tolist()
+    # - elimina elementi per classi sovra rappresentate
+    MAX_PER_CLASS = 3000
+    print(f"max per class: {MAX_PER_CLASS}, NO augementer")
+    balanced_indices = []
+    for cls in classes:
+        cls_indices = track_genres[track_genres == cls].index.tolist()
+        if len(cls_indices) > MAX_PER_CLASS:
+            cls_indices = list(numpy.random.choice(cls_indices, MAX_PER_CLASS, replace=False))
+        balanced_indices.extend(cls_indices)
+    track_genres = track_genres.loc[balanced_indices]
 
 le = LabelEncoder()
 le.fit(classes)

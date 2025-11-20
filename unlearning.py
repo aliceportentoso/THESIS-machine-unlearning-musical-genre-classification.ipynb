@@ -1,15 +1,17 @@
 import joblib
-from eval import evaluate_unlearning, compute_accuracy
+from eval import evaluate_unlearning
 from dataset import FMADataset
 from model import Cnn6
 import time
 from train import *
-
+import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.utils.prune as prune
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
+from typing import List, Tuple
+
+import torch.optim as optim
+import torch.nn.functional as F
 
 def unlearning_main():
     retain_ids, forget_ids, retain_labels, forget_labels = [], [], [], []
@@ -50,7 +52,7 @@ def unlearning_main():
     elif UNL_METHOD == "ST":
         unl_stochastic_teacher(model, forget_loader, retain_loader, val_loader, criterion, optimizer, le)
     elif UNL_METHOD == "OSM":
-        unl_one_shot_magnitude(model, forget_loader, retain_loader, prune_ratio=0.2)
+        unl_one_shot_magnitude(model, forget_loader, retain_loader, val_loader, criterion, optimizer, le)
     elif UNL_METHOD == "A":
         unl_amnesiac(model, forget_loader, retain_loader, criterion=None, steps=1)
     else:
@@ -58,9 +60,10 @@ def unlearning_main():
 
     print(f"Tempo Unlearning: {(time.time() - start_time)/3600:.2f} ore")
 
-def unl_fine_tuning(model, forget_loader, retain_loader, val_loader, criterion, optimizer, le, lambda_unlearn=1.0):
+def unl_fine_tuning(model, forget_loader, retain_loader, val_loader, criterion, optimizer, le, lambda_unlearn=0.5):
     model.train()
     forget_losses, retain_losses = [], []
+    forget_accs, retain_accs = [], []
     retain_iter = iter(retain_loader)
 
     for epoch in range(UNL_EPOCHS):
@@ -105,7 +108,9 @@ def unl_fine_tuning(model, forget_loader, retain_loader, val_loader, criterion, 
         retain_losses.append(avg_r)
 
         print(f"Epoch {epoch+1}/{UNL_EPOCHS} | Retain: {avg_r:.4f} | Forget: {avg_f:.4f}")
-        forget_accs, retain_accs = evaluate_unlearning(model, forget_loader, retain_loader, val_loader, forget_losses, retain_losses, le)
+        f_acc, r_acc = evaluate_unlearning(model, forget_loader, retain_loader, val_loader, le)
+        forget_accs.append(f_acc)
+        retain_accs.append(r_acc)
         print_loss(forget_losses, retain_losses, forget_accs, retain_accs, unlearning=True)
 
     print("FINE TUNING completato.")
@@ -118,6 +123,7 @@ def unl_gradient_ascent(model, forget_loader, retain_loader, val_loader, criteri
     - Controlla il bilanciamento tramite i pesi alpha e beta.    """
     model.train()
     forget_losses, retain_losses = [], []
+    forget_accs, retain_accs = [], []
     total_forget, total_retain = 0.0, 0.0
     num_batches = 0
 
@@ -168,23 +174,24 @@ def unl_gradient_ascent(model, forget_loader, retain_loader, val_loader, criteri
         forget_losses.append(avg_f)
         retain_losses.append(avg_r)
 
-        print(f"Epoch {epoch+1}/{UNL_EPOCHS} | Retain: {avg_r:.4f} | Forget: {avg_f:.4f}")
-        forget_accs, retain_accs = evaluate_unlearning(model, forget_loader, retain_loader, val_loader, forget_losses, retain_losses, le)
+        print(f"Epoch {epoch + 1}/{UNL_EPOCHS} | Retain: {avg_r:.4f} | Forget: {avg_f:.4f}")
+        f_acc, r_acc = evaluate_unlearning(model, forget_loader, retain_loader, val_loader, forget_losses, retain_losses, le)
+        forget_accs.append(f_acc)
+        retain_accs.append(r_acc)
         print_loss(forget_losses, retain_losses, forget_accs, retain_accs, unlearning=True)
 
     print("GRADIENT ASCENT completato.")
     return forget_losses, retain_losses
 
-def unl_stochastic_teacher(model, forget_loader, retain_loader, val_loader, criterion, optimizer, le, alpha=0.4, beta=0.6, randomize_labels=False):
+def unl_stochastic_teacher(model, forget_loader, retain_loader, val_loader, criterion, optimizer, le, alpha=0.3, beta=0.7, randomize_labels=False):
     """   randomize_labels: se True, randomizza le label dei dati da dimenticare  """
-    print(f'alpha:"{alpha}')
-    print(f'beta:{beta}')
-    print(f'LR:{LR}')
+    print(f'alpha: {alpha}')
+    print(f'beta: {beta}')
     model.train()
     model.to(DEVICE)
 
-    retain_losses = []
-    forget_losses = []
+    forget_losses, retain_losses = [], []
+    forget_accs, retain_accs = [], []
 
     for epoch in range(UNL_EPOCHS):
         retain_iter = iter(retain_loader)
@@ -223,85 +230,57 @@ def unl_stochastic_teacher(model, forget_loader, retain_loader, val_loader, crit
             loss.backward()
             optimizer.step()
 
+        forget_losses.append(forget_loss)
+        retain_losses.append(retain_loss)
 
-        print(f"Epoch [{epoch+1}/{UNL_EPOCHS}] - Retain Loss: {retain_loss.item():.4f} | Forget Loss: {forget_loss.item():.4f}")
-        retain_losses.append(retain_loss.item())
-        forget_losses.append(forget_loss.item())
-
-        forget_accs, retain_accs = evaluate_unlearning(model, forget_loader, retain_loader, val_loader, forget_losses, retain_losses, le)
+        print(f"Epoch {epoch + 1}/{UNL_EPOCHS} | Retain: {retain_loss:.4f} | Forget: {forget_loss:.4f}")
+        f_acc, r_acc = evaluate_unlearning(model, forget_loader, retain_loader, val_loader, forget_losses, retain_losses, le)
+        forget_accs.append(f_acc)
+        retain_accs.append(r_acc)
         print_loss(forget_losses, retain_losses, forget_accs, retain_accs, unlearning=True)
 
     print("STOCHASTICH TEACHER completato.")
     return forget_losses, retain_losses
 
+def unl_one_shot_magnitude(model, forget_loader, retain_loader, val_loader, criterion, optimizer, le
+) -> Tuple[List[float], List[float]]:
 
-def unl_one_shot_magnitude(model, forget_loader, retain_loader, prune_ratio=0.2):
-    """   Dimentica selettivamente parti del modello prunando i pesi legati ai dati da dimenticare. """
-
-    model.to(DEVICE)
-    model.eval()
-
-    # --- Step 1: Calcola gradienti medi sui dati da dimenticare ---
-    importance = {}
-    for name, param in model.named_parameters():
-
-        if param.requires_grad:
-            importance[name] = torch.zeros_like(param)
-
-    criterion = nn.CrossEntropyLoss()
-
-    with torch.no_grad():
-        for x, y in forget_loader:
-            x, y = x.to(DEVICE), y.to(DEVICE)
-            outputs = model(x)
-            outputs = outputs['clipwise_output']
-            loss = criterion(outputs, y)
-            grads = torch.autograd.grad(loss, model.parameters(), retain_graph=False, create_graph=False)
-            for (name, param), g in zip(model.named_parameters(), grads):
-                if g is not None:
-                    importance[name] += g.abs()
-
-    # Normalizza importanza
-    for name in importance:
-        importance[name] /= len(forget_loader)
-
-    # --- Step 2: Pruning one-shot ---
+    prune_ratio = 0.95
+    # --- Step 1: One-shot magnitude pruning
     parameters_to_prune = []
     for name, module in model.named_modules():
-        if isinstance(module, (nn.Conv2d, nn.Linear)):
+        if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
             parameters_to_prune.append((module, 'weight'))
+            if hasattr(module, 'bias') and module.bias is not None:
+                parameters_to_prune.append((module, 'bias'))
 
-    # Applica pruning per ogni modulo in base alla magnitude
     prune.global_unstructured(
         parameters_to_prune,
         pruning_method=prune.L1Unstructured,
         amount=prune_ratio
     )
 
-    # --- Step 3 (opzionale): Fine-tuning su retain set ---
+    # --- Step 2: Bloccare i pesi azzerati con una maschera
+    for module, param_name in parameters_to_prune:
+        mask = getattr(module, f"{param_name}_mask")
+        module.register_buffer(f"{param_name}_mask_blocked", mask.clone())
+        # Override backward per blocco (semplice esempio)
+        param = getattr(module, param_name)
+        param.grad = None
+        param.register_hook(lambda grad, mask=mask: grad * mask)
 
+    # --- Step 3: Fine-tuning leggero sui dati da mantenere
     model.train()
-    optimizer = optim.Adam(model.parameters(), lr=LR)
-    criterion = nn.CrossEntropyLoss()
-
-    for epoch in range(UNL_EPOCHS):
-        total_loss = 0
+    epochs = 1  # fine-tuning rapido
+    for epoch in range(epochs):
         for x, y in retain_loader:
             x, y = x.to(DEVICE), y.to(DEVICE)
-            optimizer.zero_grad()
-            out = model(x)
-            loss = criterion(out, y)
+            outputs = model(x)['clipwise_output']
+            loss = criterion(outputs, y)
             loss.backward()
             optimizer.step()
-            total_loss += loss.item()
-        print(f"Fine-tune epoch [{epoch+1}/{UNL_EPOCHS}] - Loss: {total_loss/len(retain_loader):.4f}")
 
-    # --- Step 4: Rimuove i reparametrization buffer per "consolidare" il pruning ---
-    for module, _ in parameters_to_prune:
-        prune.remove(module, 'weight')
-
-    print(f"Complete UNLEARNING con ONE-SHOT-MAGN con prune_ratio={prune_ratio}")
-    return model
+    eval.evaluate_unlearning(model, forget_loader, retain_loader, val_loader, le)
 
 def unl_amnesiac(model, forget_loader, retain_loader=None, criterion=None, steps=1):
     """   Effettua aggiornamenti inversi del gradiente per "dimenticare" esempi specifici.  """

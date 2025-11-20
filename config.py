@@ -2,12 +2,28 @@ import torch
 from datetime import datetime
 timestamp = datetime.now().strftime("%Y%m%d-%H%M")
 
-LR = 0.0001
 SUBSET = 'medium'
+
+reason = "plot" # per passare velocemente dall'esecuzione continua dei plot per unlearning per ogni genere
+
+# UNLEARN
+ # "Blues", "Classical", "Country", "Easy Listening", "Electronic", "Experimental", "Folk", "Hip-Hop"
+if reason == "plot":
+    LR = 0.0001  # 0.00005 per i primi 3 metodi, 0.01 per OSM
+    UNL_EPOCHS = 4 #15 per FT, 5 per GA
+    UNL_METHOD = "OSM"  # FT, GA, ST, OSM, A
+    GENRE_TO_FORGET = "Folk"
+    UNL_NAME = f'{UNL_METHOD}-{SUBSET}-LR_{LR}-epoch_{UNL_EPOCHS}/forget-{GENRE_TO_FORGET}'
+else:
+    LR = 0.0005
+    UNL_EPOCHS = 10
+    UNL_METHOD = "FT"
+    GENRE_TO_FORGET = "Electronic"
+    UNL_NAME = f'UNL_MEDIUM/{timestamp}-METHOD_{UNL_METHOD}-genre_{GENRE_TO_FORGET}'  # unl-small-LR_5e-05-GA-4_epochs
 
 # LEARN
 GENRE_TO_REMOVE = None
-MAX_EPOCHS = 1
+MAX_EPOCHS = 100
 
 if GENRE_TO_REMOVE is None:
     NAME = f'{timestamp}_LEARN_LR-{LR}_subset-{SUBSET}_epochs-{MAX_EPOCHS}'
@@ -17,11 +33,8 @@ else:
 MODEL_PATH = f'saved_models/{NAME}_model.pth'
 ENCODER_PATH = f'label_encoder_{SUBSET}.joblib'
 
-# UNLEARN
-GENRE_TO_FORGET = "Experimental" # "Blues", "Classical", "Country", "Easy Listening", "Electronic", "Experimental", "Folk", "Hip-Hop"
-UNL_EPOCHS = 2 #15 per FT, 5 per GA
-UNL_METHOD = "FT" # FT, GA, ST, OSM, A
-UNL_NAME = f'METHOD_{UNL_METHOD}-genre_{GENRE_TO_FORGET}-{timestamp}' # unl-small-LR_5e-05-GA-4_epochs
+# MEDIUM: "Electronic, Experimental, Folk, Hip-Hop, Instrumental, International, Pop, Rock
+
 UNL_MODEL_PATH = f'saved_models/{UNL_NAME}_unl_model.pth'
 
 if SUBSET == 'small':
@@ -37,12 +50,8 @@ HOP_SIZE = 512
 N_MELS = 64
 fmin = 0
 fmax = SAMPLE_RATE // 2
-if SUBSET == 'small':
-    NUM_CLASSES = 8
-if SUBSET == 'medium':
-    NUM_CLASSES = 8
-if SUBSET == 'large':
-    NUM_CLASSES = 8
+
+NUM_CLASSES = 8
 
 NUM_FRAMES = 1292
 DURATION = 30

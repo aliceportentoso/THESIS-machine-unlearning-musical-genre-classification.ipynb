@@ -21,6 +21,7 @@ def evaluate(model, data_loader, label_encoder):
     print(f"Accuracy: {acc:.4f}")
 
     print_confusion_matrix(all_labels, all_preds, label_encoder)
+    plt.title(f"Confusion Matrix for LEARNING of {SUBSET} subset, {UNL_EPOCHS} unl epochs")
 
     if GENRE_TO_REMOVE is None:
         plt.title(f"Confusion Matrix for GENRE CLASSIFICATION, {MAX_EPOCHS} epochs")
@@ -32,7 +33,7 @@ def evaluate(model, data_loader, label_encoder):
 
     return acc
 
-def evaluate_unlearning(model, forget_loader, retain_loader, val_loader, forget_loss, retain_loss, label_encoder):
+def evaluate_unlearning(model, forget_loader, retain_loader, val_loader, label_encoder):
 
     model.eval()
     all_preds = []
@@ -53,17 +54,14 @@ def evaluate_unlearning(model, forget_loader, retain_loader, val_loader, forget_
     print(f"Accuracy sui dati da dimenticare: {forget_acc:.4f}")
     retain_acc = compute_accuracy(model, retain_loader)
     print(f"Accuracy sui dati rimasti: {retain_acc:.4f}")
-    global_acc = compute_accuracy(model, val_loader)
-    print(f"Accuracy sui dati totale: {global_acc:.4f}")
+    #global_acc = compute_accuracy(model, val_loader)
+    #print(f"Accuracy sui dati totale: {global_acc:.4f}")
 
     print_confusion_matrix(all_labels, all_preds, label_encoder)
     plt.title(f"Confusion Matrix for UNLEARNING of {GENRE_TO_FORGET}, {UNL_EPOCHS} unl epochs")
-    plt.savefig(f"results/UNL_MEDIUM/{UNL_NAME}_CM.png", bbox_inches='tight')
+    plt.savefig(f"results/{UNL_NAME}_CM.png", bbox_inches='tight')
     plt.show()
 
-    print_loss(forget_loss, retain_loss, forget_acc, retain_acc, unlearning=True)
-    plt.savefig(f"results/UNL_MEDIUM/{UNL_NAME}_LOSS.png", bbox_inches='tight')  # bbox_inch
-    plt.show()
     return forget_acc, retain_acc
 
 def compute_accuracy(model, loader):

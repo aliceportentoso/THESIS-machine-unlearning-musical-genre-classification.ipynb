@@ -57,9 +57,7 @@ def train(model, train_loader, val_loader, criterion, optimizer, device):
         # loss and accuracy plots during epochs
         if epoch % 10 == 0 and epoch != 0:
             print_loss(train_losses, val_losses, train_accs, val_accs)
-            plt.savefig(f"results/PROGRESS-{NAME}_LOSS.png", bbox_inches='tight')  # bbox_inch
-            plt.show()
-            plt.figure(figsize=(10, 4))
+
         print(f"Epoch {epoch + 1}/{MAX_EPOCHS} | "
               f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} | "
               f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
@@ -79,8 +77,6 @@ def train(model, train_loader, val_loader, criterion, optimizer, device):
         #        break
 
         print_loss(train_losses, val_losses, train_accs, val_accs)
-        plt.savefig(f"results/{NAME}_LOSS.png", bbox_inches='tight')  # bbox_inch
-        plt.show()
 
     return model, (train_losses, val_losses, train_accs, val_accs)
 
@@ -101,3 +97,9 @@ def print_loss(train_losses, val_losses, train_accs, val_accs, unlearning = Fals
     plt.plot(val_accs, label=label4)
     plt.legend()
     plt.title("Accuracy")
+
+    if not unlearning:
+        plt.savefig(f"results/{NAME}_LOSS.png", bbox_inches='tight')
+    else:
+        plt.savefig(f"results/{UNL_NAME}_LOSS.png", bbox_inches='tight')
+    plt.show()
