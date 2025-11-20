@@ -1,4 +1,5 @@
 import numpy
+import torch
 from torch.utils.data import DataLoader
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
@@ -13,10 +14,10 @@ from train import train
 from eval import evaluate
 from config import *
 
-print_config()
-tracks = pd.read_csv(CSV_FILE,  index_col=0, header=[0,1])
+Config.print_config()
+tracks = pd.read_csv(Config.CSV_FILE,  index_col=0, header=[0,1])
 
-if SUBSET == "small":
+if Config.SUBSET == "small":
     sub_tracks = tracks[tracks[('set', 'subset')] == "small"]
     track_genres = sub_tracks[('track', 'genre_top')].dropna()  # 49 mila
     track_genres = track_genres.sort_values()
@@ -41,12 +42,12 @@ else: # RIDUCI DIMENSIONE DI DATASET SMALL PER BILANCIARE
 
 le = LabelEncoder()
 le.fit(classes)
-joblib.dump(le, ENCODER_PATH) # -> non serve se è sempre lo stesso
+joblib.dump(le, Config.ENCODER_PATH) # -> non serve se è sempre lo stesso
 
-if GENRE_TO_REMOVE is not None:
+if Config.GENRE_TO_REMOVE is not None:
 
-    print(f"Learning senza il genere {GENRE_TO_FORGET}..")
-    genre_ids = sub_tracks[sub_tracks[('track', 'genre_top')] == GENRE_TO_FORGET].index #questo serve a non far eliminare completamente il genere
+    print(f"Learning senza il genere {Config.GENRE_TO_FORGET}..")
+    genre_ids = sub_tracks[sub_tracks[('track', 'genre_top')] == Config.GENRE_TO_FORGET].index #questo serve a non far eliminare completamente il genere
     track_genres = track_genres.drop(genre_ids, errors='ignore')
 
 track_genres = track_genres.drop([1486,2624,3284,5574,8669,10116,11583,12838,13529,14116,14180,20814,22554,23429,23430,
@@ -77,12 +78,12 @@ train_ids, val_ids, train_labels, val_labels = train_test_split(
 # SAVE SPLITS
 #if not os.path.isdir(SPLITS_DIR): # se la cartella non esiste la creo
 #    os.makedirs(SPLITS_DIR, exist_ok=True)
-joblib.dump(train_ids, f"{SPLITS_DIR}/train_ids.joblib")
-joblib.dump(train_labels, f"{SPLITS_DIR}/train_labels.joblib")
-joblib.dump(val_ids, f"{SPLITS_DIR}/val_ids.joblib")
-joblib.dump(val_labels, f"{SPLITS_DIR}/val_labels.joblib")
-joblib.dump(test_ids, f"{SPLITS_DIR}/test_ids.joblib")
-joblib.dump(test_labels, f"{SPLITS_DIR}/test_labels.joblib")
+joblib.dump(train_ids, f"{Config.SPLITS_DIR}/train_ids.joblib")
+joblib.dump(train_labels, f"{Config.SPLITS_DIR}/train_labels.joblib")
+joblib.dump(val_ids, f"{Config.SPLITS_DIR}/val_ids.joblib")
+joblib.dump(val_labels, f"{Config.SPLITS_DIR}/val_labels.joblib")
+joblib.dump(test_ids, f"{Config.SPLITS_DIR}/test_ids.joblib")
+joblib.dump(test_labels, f"{Config.SPLITS_DIR}/test_labels.joblib")
 
 augmenter = SpecAugmentation(time_drop_width=64,time_stripes_num=2, freq_drop_width=8, freq_stripes_num=2)
 
@@ -90,9 +91,9 @@ augmenter = SpecAugmentation(time_drop_width=64,time_stripes_num=2, freq_drop_wi
 train_dataset = FMADataset(train_ids, train_labels, augmenter = None)
 val_dataset   = FMADataset(val_ids, val_labels)
 test_dataset  = FMADataset(test_ids, test_labels)
-train_loader = DataLoader(train_dataset,batch_size=BATCH_SIZE, shuffle=True,  num_workers=NUM_WORKERS)
-val_loader   = DataLoader(val_dataset,  batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS)
-test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS)
+train_loader = DataLoader(train_dataset,batch_size=Config.BATCH_SIZE, shuffle=True,  num_workers=Config.NUM_WORKERS)
+val_loader   = DataLoader(val_dataset,  batch_size=Config.BATCH_SIZE, shuffle=False, num_workers=Config.NUM_WORKERS)
+test_loader  = DataLoader(test_dataset, batch_size=Config.BATCH_SIZE, shuffle=False, num_workers=Config.NUM_WORKERS)
 
 # --- MODEL ---
 model = Cnn6()
@@ -106,7 +107,7 @@ output_dict = model(batch_waveforms) #qui chiamo model-forward
 clipwise_output = output_dict['clipwise_output']  # [batch_size, NUM_CLASSES]
 embedding = output_dict['embedding']              # [batch_size, 512]
 criterion = torch.nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+optimizer = torch.optim.Adam(model.parameters(), lr=Config.LR)
 
 # --- TRAINING ---
 start_time = time.time()
@@ -115,7 +116,7 @@ train(model, train_loader, val_loader, criterion, optimizer, DEVICE)
 # --- Evaluation and save model
 accuracy = evaluate(model, test_loader, label_encoder=le)
 #joblib.dump(accuracy, f"results/{NAME}_accuracy_train.joblib") #-> se non cambia l'ho già salvato. serve per fare confronto pre e post, per dump
-torch.save(model.state_dict(), MODEL_PATH)
+torch.save(model.state_dict(), Config.MODEL_PATH)
 
-print_config()
+Config.print_config()
 print(f"Tempo Learning: {(time.time()-start_time)/3600:.2f} ore")

@@ -1,3 +1,4 @@
+import torch
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from train import *
 
@@ -21,14 +22,14 @@ def evaluate(model, data_loader, label_encoder):
     print(f"Accuracy: {acc:.4f}")
 
     print_confusion_matrix(all_labels, all_preds, label_encoder)
-    plt.title(f"Confusion Matrix for LEARNING of {SUBSET} subset, {UNL_EPOCHS} unl epochs")
+    plt.title(f"Confusion Matrix for LEARNING of {Config.SUBSET} subset, {Config.UNL_EPOCHS} unl epochs")
 
-    if GENRE_TO_REMOVE is None:
-        plt.title(f"Confusion Matrix for GENRE CLASSIFICATION, {MAX_EPOCHS} epochs")
-        plt.savefig(f"results/{UNL_NAME}_CM.png", bbox_inches='tight')
+    if Config.GENRE_TO_REMOVE is None:
+        plt.title(f"Confusion Matrix for GENRE CLASSIFICATION, {Config.MAX_EPOCHS} epochs")
+        plt.savefig(f"results/{Config.unl_name_path()}_CM.png", bbox_inches='tight')
     else:
-        plt.title(f"Confusion Matrix for LEARNING WITHOUT {GENRE_TO_REMOVE}, {MAX_EPOCHS} epochs")
-        plt.savefig(f"results/{NAME}_CM.png", bbox_inches='tight')
+        plt.title(f"Confusion Matrix for LEARNING WITHOUT {Config.GENRE_TO_REMOVE}, {Config.MAX_EPOCHS} epochs")
+        plt.savefig(f"results/{Config.name_path}_CM.png", bbox_inches='tight')
     plt.show()
 
     return acc
@@ -58,8 +59,8 @@ def evaluate_unlearning(model, forget_loader, retain_loader, val_loader, label_e
     #print(f"Accuracy sui dati totale: {global_acc:.4f}")
 
     print_confusion_matrix(all_labels, all_preds, label_encoder)
-    plt.title(f"Confusion Matrix for UNLEARNING of {GENRE_TO_FORGET}, {UNL_EPOCHS} unl epochs")
-    plt.savefig(f"results/{UNL_NAME}_CM.png", bbox_inches='tight')
+    plt.title(f"Confusion Matrix for UNLEARNING of {Config.GENRE_TO_FORGET}, {Config.UNL_EPOCHS} unl epochs")
+    plt.savefig(f"results/{Config.unl_name_path()}_CM.png", bbox_inches='tight')
     plt.show()
 
     return forget_acc, retain_acc
@@ -80,7 +81,7 @@ def compute_accuracy(model, loader):
     return acc
 
 def print_confusion_matrix(all_labels, all_preds, label_encoder):
-    cm = confusion_matrix(all_labels, all_preds, labels=range(NUM_CLASSES))
+    cm = confusion_matrix(all_labels, all_preds, labels=range(Config.NUM_CLASSES))
     fig, ax = plt.subplots(figsize=(10, 10))
     disp = ConfusionMatrixDisplay(cm, display_labels=label_encoder.classes_)
     disp.plot(ax=ax, cmap=plt.cm.Blues, colorbar=False)

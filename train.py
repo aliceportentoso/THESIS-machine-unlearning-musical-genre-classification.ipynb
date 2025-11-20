@@ -1,3 +1,4 @@
+import torch
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from config import *
@@ -12,10 +13,10 @@ def train(model, train_loader, val_loader, criterion, optimizer, device):
     train_losses, val_losses = [], []
     train_accs, val_accs = [], []
 
-    for epoch in range(MAX_EPOCHS):
+    for epoch in range(Config.MAX_EPOCHS):
         model.train()
         running_loss, correct, total = 0, 0, 0
-        for inputs, labels in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{MAX_EPOCHS}"):
+        for inputs, labels in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{Config.MAX_EPOCHS}"):
             inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
@@ -58,7 +59,7 @@ def train(model, train_loader, val_loader, criterion, optimizer, device):
         if epoch % 10 == 0 and epoch != 0:
             print_loss(train_losses, val_losses, train_accs, val_accs)
 
-        print(f"Epoch {epoch + 1}/{MAX_EPOCHS} | "
+        print(f"Epoch {epoch + 1}/{Config.MAX_EPOCHS} | "
               f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} | "
               f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
 
@@ -99,7 +100,7 @@ def print_loss(train_losses, val_losses, train_accs, val_accs, unlearning = Fals
     plt.title("Accuracy")
 
     if not unlearning:
-        plt.savefig(f"results/{NAME}_LOSS.png", bbox_inches='tight')
+        plt.savefig(f"results/{Config.name_path()}_LOSS.png", bbox_inches='tight')
     else:
-        plt.savefig(f"results/{UNL_NAME}_LOSS.png", bbox_inches='tight')
+        plt.savefig(f"results/{Config.unl_name_path()}_LOSS.png", bbox_inches='tight')
     plt.show()

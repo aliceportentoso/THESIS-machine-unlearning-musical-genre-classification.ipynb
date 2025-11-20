@@ -6,13 +6,13 @@ from config import *
 
 # Crea la trasformazione MelSpectrogram globale
 mel_spec_transform = torchaudio.transforms.MelSpectrogram(
-    sample_rate=SAMPLE_RATE,
-    n_fft=WINDOW_SIZE,
-    hop_length=HOP_SIZE,
-    n_mels=N_MELS
+    sample_rate=Config.SAMPLE_RATE,
+    n_fft=Config.WINDOW_SIZE,
+    hop_length=Config.HOP_SIZE,
+    n_mels=Config.N_MELS
 )
 
-def preprocessing(filepath, num_samples=SAMPLE_RATE * DURATION):
+def preprocessing(filepath, num_samples=Config.SAMPLE_RATE * Config.DURATION):
 
     waveform, sr = torchaudio.load(filepath)
 
@@ -39,7 +39,7 @@ class FMADataset(Dataset):
     def __init__(self, track_ids, labels, augmenter = None, min_count = 100):
         self.track_ids = track_ids
         self.labels = labels
-        self.num_samples = SAMPLE_RATE * DURATION
+        self.num_samples = Config.SAMPLE_RATE * Config.DURATION
         self.augmenter = augmenter
 
         # data augmentation per le classi molto poco rappresentate
@@ -67,7 +67,7 @@ class FMADataset(Dataset):
 
         tid_str = f"{track_id:06d}"
         folder = tid_str[:3]
-        filepath = os.path.join(AUDIO_DIR, folder, tid_str + '.mp3')
+        filepath = os.path.join(Config.AUDIO_DIR, folder, tid_str + '.mp3')
 
         mel_spec = preprocessing(filepath, self.num_samples)
 

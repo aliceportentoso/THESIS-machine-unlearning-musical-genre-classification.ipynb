@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchlibrosa.stft import LogmelFilterBank
@@ -22,15 +23,16 @@ class Cnn6(nn.Module):
 
         super(Cnn6, self).__init__()
 
-        self.register_buffer("window", torch.hann_window(WINDOW_SIZE))
+        self.register_buffer("window", torch.hann_window(Config.WINDOW_SIZE))
 
         ref = 1.0
         amin = 1e-10
         top_db = None
 
         # Logmel feature extractor
-        self.logmel_extractor = LogmelFilterBank(sr=SAMPLE_RATE, n_fft=WINDOW_SIZE, n_mels=N_MELS, fmin=fmin, fmax=fmax,
-                                                 ref=ref, amin=amin, top_db=top_db, freeze_parameters=True)
+        self.logmel_extractor = LogmelFilterBank(sr=Config.SAMPLE_RATE, n_fft=Config.WINDOW_SIZE,
+                                                 n_mels=Config.N_MELS, fmin=Config.fmin, fmax=Config.fmax,ref=ref,
+                                                 amin=amin, top_db=top_db, freeze_parameters=True)
 
         # Spec augmenter
         self.spec_augmenter = SpecAugmentation(time_drop_width=64, time_stripes_num=2,
@@ -42,7 +44,7 @@ class Cnn6(nn.Module):
         self.conv_block4 = ConvBlock5x5(in_channels=256, out_channels=512)
 
         self.fc1 = nn.Linear(512, 512, bias=True)
-        self.fc_audioset = nn.Linear(512, NUM_CLASSES, bias=True)
+        self.fc_audioset = nn.Linear(512, Config.NUM_CLASSES, bias=True)
 
         self.init_weight()
 
