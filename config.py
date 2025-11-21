@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+import torch
 
 DEVICE = "cuda"
 
@@ -14,24 +15,24 @@ class Config:
     GENRE_TO_REMOVE = None
 
     # Unlearning
-    UNL_METHOD = "FT"   # FT, GA, ST, OSM, A
+    UNL_METHOD = "OSM"   # FT, GA, ST, OSM, A
     UNL_EPOCHS = 4
-    GENRE_TO_FORGET = "Prova"
+    GENRE_TO_FORGET = "Electronic"
 
     if SUBSET == "medium":
-        GENRES = ["Electronic", "Experimental", "Folk", "Hip-Hop", "Instrumental", "International", "Pop", "Rock" ]
-        MODEL_PATH = "saved_models/20251105-1251_LEARN_LR-0.0005_subset-medium_epochs-500_model.pth"
+        GENRES = ["Electronic", "Experimental", "Folk", "Hip-Hop", "Instrumental", "International", "Pop", "Rock"]
+        MODEL_PATH = "saved_models/MODEL_MEDIUM_500_EPOCHS_LR_0.0005_202511051251.pth"
 
     else:
         GENRES = [ "Blues", "Classical", "Country", "Easy Listening", "Electronic", "Experimental", "Folk", "Hip-Hop"  ]
-        MODEL_PATH = "saved_models/model_learning_20251022-1824_remove-None_epochs-200.pth"
+        MODEL_PATH = "saved_models/MODEL_SMALL_200_EPOCHS_202510221824.pth"
 
     AUDIO_DIR = "fma_large"
     CSV_FILE = "fma_metadata/tracks.csv"
     ENCODER_PATH = f"label_encoder_{SUBSET}.joblib"
     SPLITS_DIR = f"data_splits/{SUBSET}-dataset_remove-{GENRE_TO_REMOVE}"
 
-    timestamp: str = field(default_factory=lambda: datetime.now().strftime("%Y%m%d-%H%M"))
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M")
 
     # Audio parameters
     SAMPLE_RATE = 22050
@@ -47,13 +48,16 @@ class Config:
 
     # System
     NUM_WORKERS = 8
+    UNL_NAME = "Prova"
 
     @classmethod
     def unl_name_path(cls):
-        return (
-            f"{cls.UNL_METHOD}-{cls.SUBSET}-LR_{cls.LR}-"
-            f"epoch_{cls.UNL_EPOCHS}/forget-{cls.GENRE_TO_FORGET}"
-        )
+        if cls.UNL_METHOD == "FT":
+            cls.UNL_NAME = f"FT-medium-LR_0.0001-epoch_4/{cls.GENRE_TO_FORGET}_{cls.timestamp}"
+            return cls.UNL_NAME
+        else:
+            cls.UNL_NAME = f"{cls.timestamp}-{cls.UNL_METHOD}-{cls.SUBSET}-LR_{cls.LR}-epoch_{cls.UNL_EPOCHS}-{cls.GENRE_TO_FORGET}"
+            return cls.UNL_NAME
 
     @classmethod
     def name_path(cls):
@@ -83,4 +87,5 @@ class Config:
         print(f"Epochs         : {cls.UNL_EPOCHS}")
         print(f"Learning rate  : {cls.LR}")
         print(f"Dataset SUBSET : {cls.SUBSET}")
-        print(f"NAME           : {cls.unl_name_path()}")
+        print(f"NAME           : {cls.UNL_NAME}")
+        print(f"METHOD         : {cls.UNL_METHOD}")

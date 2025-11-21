@@ -11,13 +11,12 @@ from config import *
 import torch.optim as optim
 import torch.nn.functional as F
 
-def unlearning_main():
+def unlearning_main(prune_ratio, ft_epochs):
     retain_ids, forget_ids, retain_labels, forget_labels = [], [], [], []
     start_time = time.time()
 
     # --- CARICA MODELLO E LABEL ENCODER ---
     model = Cnn6().to(DEVICE)
-    print(Config.MODEL_PATH)
     model.load_state_dict(torch.load(Config.MODEL_PATH, map_location=DEVICE)) # carica i pesi salvati dall'addestramento
 
     model.eval()
@@ -52,7 +51,7 @@ def unlearning_main():
     elif Config.UNL_METHOD == "ST":
         unl_stochastic_teacher(model, forget_loader, retain_loader, val_loader, criterion, optimizer, le)
     elif Config.UNL_METHOD == "OSM":
-        unl_one_shot_magnitude(model, forget_loader, retain_loader, val_loader, criterion, optimizer, le, prune)
+        unl_one_shot_magnitude(model, forget_loader, retain_loader, val_loader, criterion, optimizer, le, prune_ratio, ft_epochs)
     elif Config.UNL_METHOD == "A":
         unl_amnesiac(model, forget_loader, retain_loader, criterion=None, steps=1)
     else:
@@ -108,10 +107,10 @@ def unl_fine_tuning(model, forget_loader, retain_loader, val_loader, criterion, 
         retain_losses.append(avg_r)
 
         print(f"Epoch {epoch+1}/{Config.UNL_EPOCHS} | Retain: {avg_r:.4f} | Forget: {avg_f:.4f}")
-        f_acc, r_acc = evaluate_unlearning(model, forget_loader, retain_loader, val_loader, le)
-        forget_accs.append(f_acc)
-        retain_accs.append(r_acc)
-        print_loss(forget_losses, retain_losses, forget_accs, retain_accs, unlearning=True)
+    f_acc, r_acc = evaluate_unlearning(model, forget_loader, retain_loader, val_loader, le)
+        #forget_accs.append(f_acc)
+        #retain_accs.append(r_acc)
+        #print_loss(forget_losses, retain_losses, forget_accs, retain_accs, unlearning=True)
 
     print("FINE TUNING completato.")
     return forget_losses, retain_losses
@@ -242,9 +241,8 @@ def unl_stochastic_teacher(model, forget_loader, retain_loader, val_loader, crit
     print("STOCHASTICH TEACHER completato.")
     return forget_losses, retain_losses
 
-def unl_one_shot_magnitude(model, forget_loader, retain_loader, val_loader, criterion, optimizer, le, prune):
-    prune_ratio = 0.95
-    # --- Step 1: One-shot magnitude pruning
+def unl_one_shot_magnitude(model, forget_loader, retain_loader, val_loader, criterion, optimizer, le, prune_ratio, ft_epochs):
+
     parameters_to_prune = []
     for name, module in model.named_modules():
         if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
@@ -269,8 +267,8 @@ def unl_one_shot_magnitude(model, forget_loader, retain_loader, val_loader, crit
 
     # --- Step 3: Fine-tuning leggero sui dati da mantenere
     model.train()
-    epochs = 1  # fine-tuning rapido
-    for epoch in range(epochs):
+    # fine-tuning rapido
+    for epoch in range(ft_epochs):
         for x, y in retain_loader:
             x, y = x.to(DEVICE), y.to(DEVICE)
             outputs = model(x)['clipwise_output']
@@ -349,10 +347,19 @@ def forget_retain_split(train_ids, train_labels, le):
 
     return forget_ids, forget_labels, retain_ids, retain_labels
 
+if Config.UNL_METHOD == "FT":
+    for genre in Config.GENRES:
+        Config.GENRE_TO_FORGET = genre
+        Config.unl_name_path()
+        Config.print_config_unl()
+        unlearning_main(1,1)
 
-for genre in Config.GENRES:
-    Config.GENRE_TO_FORGET = genre
-    unlearning_main()
-
-    UNL_NAME = Config.unl_name_path()
-    Config.print_config_unl()
+if Config.UNL_METHOD == "OSM":
+    prunes = [0.1, 0.3, 0.5, 0.7, 0.9]
+    FT_epochs = [0,1,2,3]
+    for ft_epochs in FT_epochs:
+        for prune_ratio in prunes :
+            Config.UNL_NAME = f"OSM/FT_epochs_{ft_epochs}-prune_ratio_{prune_ratio}"
+            print(f"FT epochs: {ft_epochs} prune ratio: {prune_ratio}")
+            Config.print_config_unl()
+            unlearning_main(prune_ratio, ft_epochs)

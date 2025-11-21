@@ -1,4 +1,4 @@
-import torch
+import numpy
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from train import *
 
@@ -22,13 +22,13 @@ def evaluate(model, data_loader, label_encoder):
     print(f"Accuracy: {acc:.4f}")
 
     print_confusion_matrix(all_labels, all_preds, label_encoder)
-    plt.title(f"Confusion Matrix for LEARNING of {Config.SUBSET} subset, {Config.UNL_EPOCHS} unl epochs")
+    plt.title(f"Normalized confusion Matrix for LEARNING of {Config.SUBSET} subset, {Config.UNL_EPOCHS} unl epochs")
 
     if Config.GENRE_TO_REMOVE is None:
-        plt.title(f"Confusion Matrix for GENRE CLASSIFICATION, {Config.MAX_EPOCHS} epochs")
-        plt.savefig(f"results/{Config.unl_name_path()}_CM.png", bbox_inches='tight')
+        plt.title(f"Normalized confusion Matrix for GENRE CLASSIFICATION, {Config.MAX_EPOCHS} epochs")
+        plt.savefig(f"results/{Config.UNL_NAME}_CM.png", bbox_inches='tight')
     else:
-        plt.title(f"Confusion Matrix for LEARNING WITHOUT {Config.GENRE_TO_REMOVE}, {Config.MAX_EPOCHS} epochs")
+        plt.title(f"Normalized confusion Matrix for LEARNING WITHOUT {Config.GENRE_TO_REMOVE}, {Config.MAX_EPOCHS} epochs")
         plt.savefig(f"results/{Config.name_path}_CM.png", bbox_inches='tight')
     plt.show()
 
@@ -59,9 +59,8 @@ def evaluate_unlearning(model, forget_loader, retain_loader, val_loader, label_e
     #print(f"Accuracy sui dati totale: {global_acc:.4f}")
 
     print_confusion_matrix(all_labels, all_preds, label_encoder)
-    plt.title(f"Confusion Matrix for UNLEARNING of {Config.GENRE_TO_FORGET}, {Config.UNL_EPOCHS} unl epochs")
-    plt.savefig(f"results/{Config.unl_name_path()}_CM.png", bbox_inches='tight')
-    plt.show()
+    plt.title(f"Normalized confusion Matrix for UNLEARNING of {Config.GENRE_TO_FORGET}, {Config.UNL_EPOCHS} unl epochs")
+    plt.savefig(f"results/{Config.UNL_NAME}_CM.png", bbox_inches='tight')
 
     return forget_acc, retain_acc
 
@@ -82,7 +81,10 @@ def compute_accuracy(model, loader):
 
 def print_confusion_matrix(all_labels, all_preds, label_encoder):
     cm = confusion_matrix(all_labels, all_preds, labels=range(Config.NUM_CLASSES))
+    cm_percentage = cm.astype('float') / cm.sum(axis=1)[:, numpy.newaxis] * 100
     fig, ax = plt.subplots(figsize=(10, 10))
-    disp = ConfusionMatrixDisplay(cm, display_labels=label_encoder.classes_)
+    disp = ConfusionMatrixDisplay(cm_percentage, display_labels=label_encoder.classes_)
     disp.plot(ax=ax, cmap=plt.cm.Blues, colorbar=False)
     plt.xticks(rotation=90)
+    plt.xlabel('Predicted label')
+    plt.ylabel('True label')
