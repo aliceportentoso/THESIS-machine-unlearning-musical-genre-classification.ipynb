@@ -10,6 +10,20 @@
           </mappings>
         </serverdata>
       </paths>
+      <paths name="dirac">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/nas/home/aportentoso/ThesisProjectNas" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="dirac (2)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/aportentoso/ThesisProjectNas" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
     </serverData>
     <option name="myAutoUpload" value="ALWAYS" />
   </component>

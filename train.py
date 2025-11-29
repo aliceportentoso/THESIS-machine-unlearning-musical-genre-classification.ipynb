@@ -1,3 +1,4 @@
+import copy
 import torch
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -8,6 +9,7 @@ def train(model, train_loader, val_loader, criterion, optimizer, device):
     best_val_loss = float("inf")
     patience_counter = 0
     best_weights = None
+    early_stopping = False
 
     # liste per i plot
     train_losses, val_losses = [], []
@@ -64,18 +66,19 @@ def train(model, train_loader, val_loader, criterion, optimizer, device):
               f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
 
         # ---- EARLY STOPPING ----
-        #if val_loss < best_val_loss:
-        #    best_val_loss = val_loss
-        #    patience_counter = 0
-        #    best_weights = copy.deepcopy(model.state_dict())
-        #else:
-        #    patience_counter += 1
-        #    print(f"Patience_counter: {patience_counter}")
-        #    if patience_counter >= patience:
-        #        print(f"Early stopping at epoch {epoch + 1}")
-        #        if best_weights is not None:
-        #            model.load_state_dict(best_weights)
-        #        break
+        if early_stopping is True:
+            if val_loss < best_val_loss:
+               best_val_loss = val_loss
+               patience_counter = 0
+               best_weights = copy.deepcopy(model.state_dict())
+            else:
+               patience_counter += 1
+               print(f"Patience_counter: {patience_counter}")
+               if patience_counter >= patience:
+                   print(f"Early stopping at epoch {epoch + 1}")
+                   if best_weights is not None:
+                       model.load_state_dict(best_weights)
+                   break
 
         print_loss(train_losses, val_losses, train_accs, val_accs)
 
@@ -102,5 +105,5 @@ def print_loss(train_losses, val_losses, train_accs, val_accs, unlearning = Fals
     if not unlearning:
         plt.savefig(f"results/{Config.name_path()}_LOSS.png", bbox_inches='tight')
     else:
-        plt.savefig(f"results/{Config.unl_name_path()}_LOSS.png", bbox_inches='tight')
+        plt.savefig(f"results/{Config.UNL_NAME}_LOSS.png", bbox_inches='tight')
     plt.show()

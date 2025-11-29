@@ -8,7 +8,6 @@ def evaluate(model, data_loader, label_encoder):
     all_labels = []
 
     with torch.no_grad():
-        print("Testing..")
         for inputs, labels in data_loader:
             inputs = inputs.to(DEVICE)
             labels = labels.to(DEVICE)
@@ -30,7 +29,6 @@ def evaluate(model, data_loader, label_encoder):
     else:
         plt.title(f"Normalized confusion Matrix for LEARNING WITHOUT {Config.GENRE_TO_REMOVE}, {Config.MAX_EPOCHS} epochs")
         plt.savefig(f"results/{Config.name_path}_CM.png", bbox_inches='tight')
-    plt.show()
 
     return acc
 
@@ -41,7 +39,6 @@ def evaluate_unlearning(model, forget_loader, retain_loader, val_loader, label_e
     all_labels = []
 
     with torch.no_grad():
-        print("Testing..")
         for inputs, labels in val_loader:
             inputs = inputs.to(DEVICE)
             labels = labels.to(DEVICE)
@@ -65,6 +62,7 @@ def evaluate_unlearning(model, forget_loader, retain_loader, val_loader, label_e
     return forget_acc, retain_acc
 
 def compute_accuracy(model, loader):
+    model.to(DEVICE)
     model.eval()
     correct, total = 0, 0
     with torch.no_grad():
@@ -84,7 +82,7 @@ def print_confusion_matrix(all_labels, all_preds, label_encoder):
     cm_percentage = cm.astype('float') / cm.sum(axis=1)[:, numpy.newaxis] * 100
     fig, ax = plt.subplots(figsize=(10, 10))
     disp = ConfusionMatrixDisplay(cm_percentage, display_labels=label_encoder.classes_)
-    disp.plot(ax=ax, cmap=plt.cm.Blues, colorbar=False)
+    disp.plot(ax=ax, cmap=plt.get_cmap('Blues'), colorbar=False)
     plt.xticks(rotation=90)
     plt.xlabel('Predicted label')
     plt.ylabel('True label')

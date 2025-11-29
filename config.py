@@ -10,13 +10,13 @@ class Config:
     SUBSET = "medium"
 
     # Learning
-    LR = 0.0001
+    LR = 0.0005
     MAX_EPOCHS = 100
     GENRE_TO_REMOVE = None
 
     # Unlearning
-    UNL_METHOD = "OSM"   # FT, GA, ST, OSM, A
-    UNL_EPOCHS = 4
+    UNL_METHOD = "GA"   # FT, GA, ST, OSM, A
+    UNL_EPOCHS = 6
     GENRE_TO_FORGET = "Electronic"
 
     if SUBSET == "medium":
@@ -52,12 +52,11 @@ class Config:
 
     @classmethod
     def unl_name_path(cls):
-        if cls.UNL_METHOD == "FT":
-            cls.UNL_NAME = f"FT-medium-LR_0.0001-epoch_4/{cls.GENRE_TO_FORGET}_{cls.timestamp}"
-            return cls.UNL_NAME
+        if cls.UNL_METHOD == "ST":
+            cls.UNL_NAME = f"ST-medium-epoch_8/{cls.GENRE_TO_FORGET}_{cls.timestamp}"
         else:
             cls.UNL_NAME = f"{cls.timestamp}-{cls.UNL_METHOD}-{cls.SUBSET}-LR_{cls.LR}-epoch_{cls.UNL_EPOCHS}-{cls.GENRE_TO_FORGET}"
-            return cls.UNL_NAME
+        return cls.UNL_NAME
 
     @classmethod
     def name_path(cls):
@@ -87,5 +86,6 @@ class Config:
         print(f"Epochs         : {cls.UNL_EPOCHS}")
         print(f"Learning rate  : {cls.LR}")
         print(f"Dataset SUBSET : {cls.SUBSET}")
-        print(f"NAME           : {cls.UNL_NAME}")
         print(f"METHOD         : {cls.UNL_METHOD}")
+        print(f"NAME           : {cls.UNL_NAME}")
+
