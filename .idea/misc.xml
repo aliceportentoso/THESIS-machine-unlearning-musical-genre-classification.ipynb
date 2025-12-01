@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.11 (ThesisProject)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="NAS - Remote Python 3.6.8 (sftp://aportentoso@10.79.0.10:22/nas/home/aportentoso/ThesisProjectNas/.venv/bin/python)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Lovelace" project-jdk-type="Python SDK" />
 </project>

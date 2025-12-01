@@ -1,25 +1,44 @@
-import transformers
-import scipy
+from IPython.core.display_functions import display
+from transformers import AutoProcessor, MusicgenForConditionalGeneration
+import soundfile as sf
+import numpy as np
+from IPython.display import Audio
+import os
+from config import *
+import simpleaudio as sa
 
-synthesiser = transformers.pipeline("text-to-audio", "facebook/musicgen-small")
+model_name = "facebook/musicgen-small"
+processor = AutoProcessor.from_pretrained(model_name)
+model = MusicgenForConditionalGeneration.from_pretrained(model_name)
 
-music = synthesiser("lo-fi music with a soothing melody", forward_params={"do_sample": True})
-
-scipy.io.wavfile.write("musicgen_out.wav", rate=music["sampling_rate"], data=music["audio"])
-
-
-processor = transformers.AutoProcessor.from_pretrained("facebook/musicgen-small")
-model = transformers.MusicgenForConditionalGeneration.from_pretrained("facebook/musicgen-small")
+prompt = "lo-fi track with a relaxing melody and soft drums"
 
 inputs = processor(
-    text=["80s pop track with bassy drums and synth", "90s rock song with loud guitars and heavy drums"],
+    text=[prompt],
     padding=True,
-    return_tensors="pt",
+    return_tensors="pt"
 )
 
-audio_values = model.generate(**inputs, max_new_tokens=256)
+audio_values = model.generate(
+    **inputs,
+    max_new_tokens=1024,   # ~50 secondi di audio (aumenta o diminuisci)
+)
 
-from IPython.display import Audio
+audio_numpy = audio_values[0].cpu().numpy().squeeze().astype("float32")
+audio_numpy = audio_numpy / np.max(np.abs(audio_numpy))  # normalizzazione
 
 sampling_rate = model.config.audio_encoder.sampling_rate
-Audio(audio_values[0].numpy(), rate=sampling_rate)
+
+# Preview audio direttamente in notebook
+display(Audio(audio_numpy, rate=sampling_rate))
+
+os.makedirs("gen_output", exist_ok=True)
+output_path = f"gen_output/output_{Config.timestamp}.wav"
+
+sf.write(output_path, audio_numpy, sampling_rate)
+
+print(f"Audio salvato in: {output_path}")
+
+wave_obj = sa.WaveObject.from_wave_file("gen_output/output.wav")
+play_obj = wave_obj.play()
+play_obj.wait_done()
